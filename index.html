@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Catman Lab · Mini Game Hub</title>
-  <link rel="icon" href="catman_lab_logo.png" type="image/png" />
+  <link rel="icon" href="catman_lab_favicon.png" type="image/png" />
   <style>
     :root {
       --bg: #050508;
@@ -72,24 +72,27 @@
       display: inline-block;
       margin-bottom: 22px;
       border-radius: 20px;
-      padding: 10px 14px;
-      background: rgba(255, 255, 255, 0.96);
+      padding: 8px 10px;
+      background: rgba(255, 255, 255, 0.03);
+      border: 1px solid rgba(74, 240, 255, 0.14);
       box-shadow:
         0 12px 40px rgba(0, 0, 0, 0.45),
-        0 0 0 1px rgba(255, 255, 255, 0.08);
-      transition: transform 0.35s ease, box-shadow 0.35s ease;
+        0 0 40px rgba(74, 240, 255, 0.06);
+      transition: transform 0.35s ease, box-shadow 0.35s ease, border-color 0.35s ease;
       cursor: default;
     }
     .logo-wrap:hover {
       transform: translateY(-6px) scale(1.02);
+      border-color: rgba(74, 240, 255, 0.35);
       box-shadow:
         0 20px 56px rgba(0, 0, 0, 0.55),
-        0 0 32px var(--accent-dim);
+        0 0 48px rgba(74, 240, 255, 0.14);
     }
     .logo {
       display: block;
       width: min(320px, 78vw);
       height: auto;
+      filter: drop-shadow(0 8px 24px rgba(0, 0, 0, 0.55));
       user-select: none;
       -webkit-user-drag: none;
     }
@@ -135,6 +138,9 @@
     .games {
       width: 100%;
       max-width: 520px;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
       animation: fadeUp 0.9s 0.15s ease both;
     }
     .games-label {
@@ -243,13 +249,16 @@
   <main>
     <section class="hero">
       <div class="logo-wrap">
-        <img
-          class="logo"
-          src="catman_lab_logo.png"
-          alt="Catman Lab logo — scientist cat with flask, coding and gaming icons"
-          width="1254"
-          height="1254"
-        />
+        <picture>
+          <source srcset="catman_lab_logo.webp" type="image/webp" />
+          <img
+            class="logo"
+            src="catman_lab_logo.png"
+            alt="Catman Lab logo — scientist cat with flask, coding and gaming icons"
+            width="640"
+            height="640"
+          />
+        </picture>
       </div>
       <h1>Mini Game Hub</h1>
       <p class="subtitle">
@@ -266,6 +275,14 @@
         <div class="game-info">
           <h2>Supergun</h2>
           <p>Classic shooter · tap to start</p>
+        </div>
+        <span class="game-arrow">→</span>
+      </a>
+      <a class="game-card" href="dot-diamond-game/index.html">
+        <div class="game-icon">💎</div>
+        <div class="game-info">
+          <h2>Dot &amp; Diamonds</h2>
+          <p>Arena survival · collect diamonds · multiple modes</p>
         </div>
         <span class="game-arrow">→</span>
       </a>
