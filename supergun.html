@@ -1,0 +1,2596 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Supergun</title>
+  <style>
+    :root {
+      --panel: #111;
+      --border: #333;
+      --text: #e8e8e8;
+      --muted: #888;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      background: #000;
+      color: var(--text);
+      font-family: system-ui, Segoe UI, Roboto, sans-serif;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: flex-start;
+      padding: 12px;
+      gap: 10px;
+    }
+    h1.page-title {
+      margin: 0;
+      font-size: 1.1rem;
+      font-weight: 600;
+      letter-spacing: 0.04em;
+    }
+    #menuScreen {
+      width: 100%;
+      max-width: 440px;
+      display: flex;
+      flex-direction: column;
+      align-items: stretch;
+      gap: 14px;
+    }
+    #menuScreen[hidden], #gameScreen[hidden] { display: none !important; }
+    .menu-card {
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 28px 26px 22px;
+      text-align: center;
+      box-shadow: 0 12px 40px rgba(0, 0, 0, 0.45);
+    }
+    .menu-card h1 {
+      font-size: 1.5rem;
+      margin: 0 0 6px;
+      letter-spacing: 0.02em;
+    }
+    .menu-card .menu-tag {
+      margin: 0 0 20px;
+      font-size: 0.8rem;
+      color: var(--muted);
+    }
+    .menu-preview-row {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 14px;
+      margin-bottom: 18px;
+    }
+    #menuDotPreview {
+      width: 56px;
+      height: 56px;
+      border-radius: 50%;
+      background: #4af0ff;
+      border: 2px solid rgba(255,255,255,0.25);
+      box-shadow: 0 0 24px rgba(74, 240, 255, 0.35);
+    }
+    .menu-fields {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 14px 18px;
+      justify-content: center;
+      align-items: flex-end;
+      margin-bottom: 20px;
+    }
+    .menu-fields > div { text-align: left; }
+    label { font-size: 0.85rem; color: var(--muted); }
+    input[type="text"] {
+      background: #0a0a0a;
+      border: 1px solid var(--border);
+      color: var(--text);
+      padding: 6px 10px;
+      border-radius: 6px;
+      width: 140px;
+    }
+    input[type="color"] {
+      width: 42px;
+      height: 32px;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 0;
+      background: #000;
+      cursor: pointer;
+    }
+    .menu-bot-difficulty {
+      margin-top: 10px;
+      padding: 10px 12px;
+      background: #161616;
+      border: 1px solid #2a2a2a;
+      border-radius: 8px;
+      font-size: 0.82rem;
+      color: #bbb;
+      text-align: left;
+    }
+    .menu-bot-difficulty label { display: block; margin-bottom: 6px; color: #999; }
+    .menu-bot-difficulty select {
+      width: 100%;
+      max-width: 320px;
+      padding: 6px 8px;
+      background: #0a0a0a;
+      border: 1px solid #444;
+      color: #eee;
+      border-radius: 6px;
+    }
+    .menu-actions {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+    button {
+      background: #2a2a2a;
+      color: var(--text);
+      border: 1px solid #444;
+      padding: 8px 14px;
+      border-radius: 8px;
+      cursor: pointer;
+      font-size: 0.9rem;
+    }
+    button:hover { background: #363636; }
+    .menu-actions .btn-start {
+      padding: 14px 20px;
+      font-size: 1.05rem;
+      font-weight: 700;
+      background: #1a3a42;
+      border-color: #3a7a8a;
+    }
+    .menu-actions .btn-start:hover { background: #224a55; }
+    #help {
+      max-width: 960px;
+      font-size: 0.78rem;
+      color: var(--muted);
+      text-align: center;
+      line-height: 1.5;
+    }
+    #gameScreen {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 0;
+    }
+    #wrap {
+      position: relative;
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      overflow: hidden;
+      box-shadow: 0 0 40px rgba(80, 120, 255, 0.08);
+    }
+    canvas#game {
+      display: block;
+      background: #000;
+      cursor: crosshair;
+    }
+    #minimap {
+      position: absolute;
+      right: 8px;
+      bottom: 8px;
+      width: 168px;
+      height: 104px;
+      z-index: 14;
+      background: #080808;
+      border: 1px solid #3a3a3a;
+      border-radius: 8px;
+      box-shadow: 0 4px 16px rgba(0, 0, 0, 0.6);
+      pointer-events: none;
+    }
+    #leftHud {
+      position: absolute;
+      left: 12px;
+      top: 10px;
+      z-index: 15;
+      width: 200px;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      pointer-events: none;
+    }
+    #hud {
+      font-size: 0.75rem;
+      color: #ccc;
+      text-shadow: 0 1px 4px #000;
+      line-height: 1.35;
+    }
+    #hud .hud-name {
+      font-size: 0.85rem;
+      font-weight: 700;
+      color: #eee;
+      margin-bottom: 2px;
+    }
+    #hud .hud-line {
+      color: #aaa;
+      white-space: nowrap;
+    }
+    #hud .hud-line strong { color: #ddd; }
+    #wallChargesHud {
+      font-size: 0.72rem;
+      color: #9ab;
+      text-shadow: 0 1px 4px #000;
+    }
+    #wallChargesHud.recharging { color: #c9a227; }
+    #wallChargesHud.empty { color: #a66; }
+    #healthBarWrap {
+      position: relative;
+      width: 100%;
+      height: 18px;
+      background: #1a1a1a;
+      border: 1px solid #444;
+      border-radius: 9px;
+      overflow: hidden;
+    }
+    #healthBarFill {
+      position: absolute;
+      left: 0;
+      top: 0;
+      height: 100%;
+      width: 100%;
+      background: linear-gradient(90deg, #c0392b, #e74c3c);
+      transition: width 0.08s;
+    }
+    #healthLabel {
+      position: absolute;
+      inset: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 0.62rem;
+      font-weight: 700;
+      color: #fff;
+      letter-spacing: 0.03em;
+      text-shadow: 0 1px 3px rgba(0, 0, 0, 0.9);
+      z-index: 1;
+      pointer-events: none;
+    }
+    #inventoryHud {
+      position: absolute;
+      left: 12px;
+      bottom: 12px;
+      display: flex;
+      gap: 6px;
+      pointer-events: none;
+    }
+    .inv-slot {
+      width: 44px;
+      height: 44px;
+      border: 2px solid #333;
+      border-radius: 6px;
+      background: rgba(0,0,0,0.6);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 0.65rem;
+      color: #888;
+      position: relative;
+    }
+    .inv-slot.active {
+      border-color: #fff;
+      box-shadow: 0 0 8px rgba(255,255,255,0.3);
+    }
+    .inv-slot .gun-dot {
+      width: 18px;
+      height: 8px;
+      border-radius: 2px;
+      margin-top: -8px;
+    }
+    .inv-slot .med-dot {
+      width: 10px;
+      height: 14px;
+      border-radius: 3px 3px 6px 6px;
+      border: 1px solid rgba(255,255,255,0.25);
+      margin-top: -6px;
+    }
+    .inv-slot .gun-type {
+      position: absolute;
+      left: 2px;
+      right: 2px;
+      bottom: 3px;
+      font-size: 0.5rem;
+      line-height: 1;
+      text-align: center;
+      color: #b7b7b7;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .inv-slot .slot-num {
+      position: absolute;
+      top: 2px;
+      left: 4px;
+      font-size: 0.55rem;
+      color: #666;
+    }
+    .go-overlay {
+      position: absolute;
+      inset: 0;
+      z-index: 20;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 16px;
+      background: rgba(0, 0, 0, 0.88);
+      backdrop-filter: blur(4px);
+    }
+    .go-overlay[hidden] { display: none !important; }
+    .go-card {
+      width: min(440px, 100%);
+      background: #141414;
+      border: 1px solid #3a3a3a;
+      border-radius: 14px;
+      padding: 22px 24px;
+      text-align: center;
+      box-shadow: 0 16px 48px rgba(0, 0, 0, 0.65);
+    }
+    .go-card h2 {
+      margin: 0 0 12px;
+      font-size: 1.45rem;
+      font-weight: 700;
+      color: #fff;
+    }
+    .go-card p { margin: 0 0 14px; color: #aaa; line-height: 1.5; }
+    #endPlacement {
+      margin: 0 0 10px;
+      font-size: 2.4rem;
+      font-weight: 800;
+      letter-spacing: 0.02em;
+      color: #4af0ff;
+      line-height: 1.1;
+    }
+    #endLeaderboard {
+      margin: 0 0 16px;
+      text-align: left;
+      max-height: 220px;
+      overflow-y: auto;
+    }
+    #endLeaderboard[hidden] { display: none !important; }
+    .end-lb-title {
+      font-size: 0.72rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: #666;
+      margin-bottom: 8px;
+      text-align: center;
+    }
+    .end-lb-list {
+      list-style: none;
+      margin: 0;
+      padding: 0;
+    }
+    .end-lb-list li {
+      display: flex;
+      justify-content: space-between;
+      gap: 12px;
+      padding: 5px 8px;
+      border-radius: 6px;
+      font-size: 0.82rem;
+      color: #bbb;
+    }
+    .end-lb-list li.end-lb-you {
+      background: rgba(74, 240, 255, 0.12);
+      color: #4af0ff;
+      font-weight: 700;
+    }
+    .end-lb-rank { color: #888; min-width: 4.5em; }
+    .end-lb-you .end-lb-rank { color: #4af0ff; }
+    .go-actions {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+    .go-actions button { padding: 12px; font-size: 0.95rem; }
+    .go-actions .btn-play-again {
+      background: #1a3a42;
+      border-color: #3a7a8a;
+      font-weight: 600;
+    }
+    .auth-card { margin-bottom: 0; }
+    .auth-tabs {
+      display: flex;
+      gap: 8px;
+      margin: 14px 0 12px;
+    }
+    .auth-tabs button {
+      flex: 1;
+      padding: 8px;
+      font-size: 0.88rem;
+      background: #1a1a1a;
+      border: 1px solid #333;
+    }
+    .auth-tabs button.active {
+      background: #2a3a42;
+      border-color: #4a6a72;
+      color: #fff;
+    }
+    .auth-form label {
+      display: block;
+      text-align: left;
+      font-size: 0.82rem;
+      color: var(--muted);
+      margin-bottom: 12px;
+    }
+    .auth-form input[type="text"],
+    .auth-form input[type="password"] {
+      display: block;
+      width: 100%;
+      margin-top: 4px;
+      padding: 8px 10px;
+      background: #0a0a0a;
+      border: 1px solid var(--border);
+      color: var(--text);
+      border-radius: 6px;
+      box-sizing: border-box;
+    }
+    .auth-form button.main {
+      width: 100%;
+      padding: 12px;
+      margin-top: 4px;
+      background: #1a3a42;
+      border-color: #3a7a8a;
+      font-weight: 600;
+    }
+    .auth-msg {
+      font-size: 0.82rem;
+      color: #e77;
+      margin: 10px 0 0;
+      min-height: 1.2em;
+      line-height: 1.45;
+    }
+    .auth-msg.ok { color: #7c8; }
+    .logged-in-bar {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      margin-bottom: 14px;
+      padding: 8px 10px;
+      background: #161616;
+      border: 1px solid #2a2a2a;
+      border-radius: 8px;
+      font-size: 0.82rem;
+      color: #bbb;
+    }
+    .logged-in-bar strong { color: #eee; }
+    .btn-logout {
+      padding: 5px 10px;
+      font-size: 0.78rem;
+    }
+    .account-stats {
+      margin: 0 0 14px;
+      padding: 8px 10px;
+      background: #121218;
+      border: 1px solid #2a2a30;
+      border-radius: 8px;
+      font-size: 0.78rem;
+      color: #999;
+      line-height: 1.5;
+    }
+    .account-stats strong { color: #8ad4ff; }
+    .btn-delete-account {
+      margin-top: 8px;
+      padding: 8px 12px;
+      font-size: 0.78rem;
+      color: #c88;
+      border-color: #533;
+      background: #1a1212;
+    }
+    .btn-delete-account:hover { background: #2a1818; }
+  </style>
+</head>
+<body>
+  <h1 class="page-title">Supergun</h1>
+
+  <div id="menuScreen">
+    <div id="authCard" class="menu-card auth-card">
+      <h1>Supergun</h1>
+      <p class="menu-tag">Accounts are saved in this browser and stay after you restart your computer. They are only removed if you delete the account or clear site data.</p>
+      <div class="auth-tabs">
+        <button type="button" id="tabLogin" class="active">Log in</button>
+        <button type="button" id="tabRegister">Register</button>
+      </div>
+      <form id="loginForm" class="auth-form" action="#" method="get" novalidate>
+        <label>Username <input id="loginUser" type="text" maxlength="16" autocomplete="username" /></label>
+        <label>Password <input id="loginPass" type="password" maxlength="64" autocomplete="current-password" /></label>
+        <button type="submit" id="btnLoginSubmit" class="main">Log in</button>
+      </form>
+      <form id="registerForm" class="auth-form" hidden action="#" method="get" novalidate>
+        <label>Username <span style="color:#666;font-size:0.75rem;">(a–z, 0–9, _ · 3–16)</span>
+          <input id="regUser" type="text" maxlength="16" autocomplete="username" /></label>
+        <label>Password <input id="regPass" type="password" maxlength="64" autocomplete="new-password" /></label>
+        <label>Confirm password <input id="regPass2" type="password" maxlength="64" autocomplete="new-password" /></label>
+        <button type="submit" id="btnRegisterSubmit" class="main">Create account</button>
+      </form>
+      <p style="font-size:0.78rem;color:#888;margin:10px 0 0;line-height:1.45;">
+        Usernames are stored lowercase. Press <strong>Enter</strong> in the password field to log in or register.
+      </p>
+      <div id="authMsg" class="auth-msg"></div>
+    </div>
+
+    <div id="gameMenuCard" class="menu-card" hidden>
+      <div class="logged-in-bar">
+        <span>Account: <strong id="loggedInName"></strong></span>
+        <button type="button" id="btnLogout" class="btn-logout">Log out</button>
+      </div>
+      <p id="accountStats" class="account-stats"></p>
+      <h1>Supergun</h1>
+      <p class="menu-tag">16-dot arena · chests · guns · last dot wins</p>
+      <div class="menu-preview-row">
+        <span id="menuDotPreview" aria-hidden="true"></span>
+      </div>
+      <div class="menu-fields">
+        <div>
+          <label for="nameInput">In-game name</label><br />
+          <input id="nameInput" type="text" value="You" maxlength="12" autocomplete="nickname" />
+        </div>
+        <div>
+          <label for="colorInput">Dot color</label><br />
+          <input id="colorInput" type="color" value="#4af0ff" />
+        </div>
+      </div>
+      <div class="menu-bot-difficulty">
+        <label for="botDifficultySelect">Bot difficulty</label>
+        <select id="botDifficultySelect" aria-label="Bot difficulty"></select>
+        <span style="display:block;margin-top:6px;color:#777;font-size:0.76rem;line-height:1.4;">
+          Higher difficulty = better aim, faster reactions, and smarter targeting (especially toward you).
+        </span>
+      </div>
+      <div class="menu-actions">
+        <button type="button" id="btnStart" class="btn-start">Start</button>
+      </div>
+      <button type="button" id="btnDeleteAccount" class="btn-delete-account">Delete this account from this device…</button>
+    </div>
+    <p id="help">
+      Move with <strong>WASD</strong> or <strong>arrow keys</strong>. <strong>Left-click and hold</strong> to shoot toward the cursor.
+      <strong>Right-click</strong> at the cursor to place a <strong>wall</strong> when a gun is selected, or to <strong>drink medicine</strong> when a potion is selected (blocks shots, 5 hits to break). You get <strong>5 walls</strong>, then wait <strong>5 seconds</strong> to recharge.
+      Open brown <strong>chests</strong> for guns. Green <strong>medicine chests</strong> go into your inventory (Bottle +25, Carton +50, Big Glugger Pot +75). Select a potion and <strong>right-click</strong> to drink it. <strong>Right-click</strong> with a gun selected to build a wall. <strong>Scroll</strong> or press <strong>1–5</strong> to switch slots.
+      Gun types: <strong>Rifle</strong> (normal), <strong>Minigun</strong> (stronger close), <strong>Sniper</strong> (stronger far). Type text shows only on <strong>dropped ground guns</strong>.
+      Press <strong>Q</strong> to drop the gun in your <strong>selected slot</strong> (aim direction).
+      Kills restore <strong>+50 HP</strong>. Walk over dropped guns and potions to pick them up (they stay on the ground if your inventory is full).
+      Defeat <strong>5 bosses</strong> for <strong>Legendary</strong> or <strong>Mythic</strong> guns. The ultra-rare <strong>Cat's Claw</strong> (Mythic, 90–130 dmg) only drops from bosses. Chests give Common through Epic. Be the last dot alive to win.
+      The arena is <strong>huge</strong> — the view follows you; use the corner <strong>minimap</strong> to see the whole map.
+      <strong>Accounts</strong> keep your name, color, difficulty, and win stats on this device across restarts.
+    </p>
+  </div>
+
+  <div id="gameScreen" hidden>
+    <div id="wrap">
+      <canvas id="game" width="900" height="560"></canvas>
+      <canvas id="minimap" width="168" height="104" aria-label="Arena minimap"></canvas>
+      <div id="leftHud">
+        <div id="hud"></div>
+        <div id="healthBarWrap">
+          <div id="healthBarFill"></div>
+          <span id="healthLabel">200 / 200</span>
+        </div>
+        <div id="wallChargesHud">Walls: 5 · Right-click to build</div>
+      </div>
+      <div id="inventoryHud"></div>
+      <div id="endOverlay" class="go-overlay" hidden>
+        <div class="go-card">
+          <h2 id="endTitle">Victory!</h2>
+          <div id="endPlacement" hidden>1st place</div>
+          <p id="endSummary"></p>
+          <div id="endLeaderboard" hidden></div>
+          <div class="go-actions">
+            <button type="button" id="btnPlayAgain" class="btn-play-again">Play again</button>
+            <button type="button" id="btnMainMenu">Main menu</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+<script>
+(function () {
+  const VIEW_W = 900;
+  const VIEW_H = 560;
+  const WORLD_W = 7200;
+  const WORLD_H = 4500;
+  const MAX_HEALTH = 200;
+  const KILL_HEAL = 50;
+  const DOT_R = 10;
+  const BOSS_R = 18;
+  const CHEST_COUNT = 40;
+  const MED_CHEST_COUNT = 28;
+  const DOT_SPEED = 200;
+  const BOSS_SPEED = 155;
+  const BOSS_COUNT = 5;
+  const TOTAL_DOTS = 16;
+  const INV_SLOTS = 5;
+
+  const RARITIES = {
+    common:    { label: "Common",    color: "#9e9e9e", dmg: [5, 35],   fireMs: 380, spread: 0.12 },
+    uncommon:  { label: "Uncommon",  color: "#4caf50", dmg: [30, 50],  fireMs: 320, spread: 0.09 },
+    rare:      { label: "Rare",      color: "#2196f3", dmg: [45, 65],  fireMs: 260, spread: 0.07 },
+    epic:      { label: "Epic",      color: "#9c27b0", dmg: [55, 75],  fireMs: 220, spread: 0.05 },
+    legendary: { label: "Legendary", color: "#ff9800", dmg: [70, 110], fireMs: 180, spread: 0.04 },
+    mythic:    { label: "Mythic",    color: "#ffd700", dmg: [90, 125], fireMs: 140, spread: 0.03 },
+  };
+  const GUN_TYPES = [
+    { id: "rifle", label: "Rifle", w: 0.5 },
+    { id: "minigun", label: "Minigun", w: 0.3 },
+    { id: "sniper", label: "Sniper", w: 0.2 },
+  ];
+
+  const CHEST_DROP_WEIGHTS = [
+    ["common", 0.22],
+    ["uncommon", 0.28],
+    ["rare", 0.32],
+    ["epic", 0.18],
+  ];
+  const MED_POTION_WEIGHTS = [
+    ["bottle", 0.40],
+    ["carton", 0.40],
+    ["glugger", 0.20],
+  ];
+  const MED_POTIONS = {
+    bottle: { label: "Bottle", color: "#9e9e9e", heal: 25 },
+    carton: { label: "Carton", color: "#4caf50", heal: 50 },
+    glugger: { label: "Big Glugger Pot", color: "#2196f3", heal: 75 },
+  };
+  const BOSS_DROP_WEIGHTS = [
+    ["legendary", 0.55],
+    ["mythic", 0.45],
+  ];
+  const BOSS_WEAPON_WEIGHTS = [
+    ["rare", 0.22],
+    ["epic", 0.38],
+    ["legendary", 0.28],
+    ["mythic", 0.12],
+  ];
+  const CATS_CLAW_DROP_CHANCE = 0.04;
+  const WALL_MAX_CHARGES = 5;
+  const WALL_RECHARGE_MS = 5000;
+  const WALL_MAX_HP = 5;
+  const GRID_STEP = 80;
+  const WALL_LENGTH = 100;
+  const WALL_THICK = 14;
+  const WALL_PLACE_MAX_DIST = 400;
+  const MED_USE_MS = 450;
+
+  const canvas = document.getElementById("game");
+  const ctx = canvas.getContext("2d");
+  const minimap = document.getElementById("minimap");
+  const mctx = minimap.getContext("2d");
+  const menuScreen = document.getElementById("menuScreen");
+  const gameScreen = document.getElementById("gameScreen");
+  const hud = document.getElementById("hud");
+  const healthBarFill = document.getElementById("healthBarFill");
+  const healthLabel = document.getElementById("healthLabel");
+  const wallChargesHud = document.getElementById("wallChargesHud");
+  const inventoryHud = document.getElementById("inventoryHud");
+  const endOverlay = document.getElementById("endOverlay");
+  const endTitle = document.getElementById("endTitle");
+  const endPlacement = document.getElementById("endPlacement");
+  const endSummary = document.getElementById("endSummary");
+  const endLeaderboard = document.getElementById("endLeaderboard");
+  const nameInput = document.getElementById("nameInput");
+  const colorInput = document.getElementById("colorInput");
+  const menuDotPreview = document.getElementById("menuDotPreview");
+  const botDifficultySelect = document.getElementById("botDifficultySelect");
+  const authCard = document.getElementById("authCard");
+  const gameMenuCard = document.getElementById("gameMenuCard");
+  const loginForm = document.getElementById("loginForm");
+  const registerForm = document.getElementById("registerForm");
+  const loginUser = document.getElementById("loginUser");
+  const loginPass = document.getElementById("loginPass");
+  const regUser = document.getElementById("regUser");
+  const regPass = document.getElementById("regPass");
+  const regPass2 = document.getElementById("regPass2");
+  const authMsg = document.getElementById("authMsg");
+  const loggedInName = document.getElementById("loggedInName");
+  const accountStats = document.getElementById("accountStats");
+  const tabLogin = document.getElementById("tabLogin");
+  const tabRegister = document.getElementById("tabRegister");
+
+  const ACCOUNTS_KEY = "supergun_accounts_v1";
+  const SESSION_KEY = "supergun_session_v1";
+  const BOT_DIFFICULTY_GUEST_KEY = "supergun_guest_botDifficulty_v1";
+  function userProfileKey(slug) { return "supergun_" + slug + "_profile_v1"; }
+  function botDifficultyStorageKey(slug) {
+    return slug ? "supergun_" + slug + "_botDifficulty_v1" : BOT_DIFFICULTY_GUEST_KEY;
+  }
+
+  let currentUserSlug = null;
+  const BOT_DIFFICULTY_ORDER = [
+    "new", "beginner", "novice", "intermediate", "advanced",
+    "pro", "expert", "master", "grandmaster",
+  ];
+  const BOT_DIFFICULTY_LABELS = {
+    new: "New (easiest)",
+    beginner: "Beginner",
+    novice: "Novice",
+    intermediate: "Intermediate",
+    advanced: "Advanced",
+    pro: "Pro",
+    expert: "Expert",
+    master: "Master",
+    grandmaster: "Grandmaster (hardest)",
+  };
+
+  let camX = 0;
+  let camY = 0;
+  let mouseScreenX = VIEW_W / 2;
+  let mouseScreenY = VIEW_H / 2;
+  let mouseWorldX = WORLD_W / 2;
+  let mouseWorldY = WORLD_H / 2;
+  let shootMouseDown = false;
+  let keys = {};
+  let running = false;
+  let lastTs = 0;
+  let playerName = "You";
+  let playerColor = "#4af0ff";
+  let aiTune = { accuracy: 0.55, shootRange: 340, retargetMin: 0.9, retargetMax: 2.0, speedMult: 1, targetPlayerChance: 0.45 };
+
+  let dots = [];
+  let chests = [];
+  let bullets = [];
+  let groundGuns = [];
+  let groundMeds = [];
+  let damageTexts = [];
+  let walls = [];
+  let player = null;
+  let matchStandings = [];
+
+  menuDotPreview.style.background = colorInput.value;
+
+  function lerp(a, b, t) { return a + (b - a) * t; }
+
+  function getAiTune(diffId) {
+    const idx = BOT_DIFFICULTY_ORDER.indexOf(diffId);
+    const t = idx < 0 ? 0.33 : idx / (BOT_DIFFICULTY_ORDER.length - 1);
+    return {
+      accuracy: lerp(0.14, 0.68, t),
+      shootRange: lerp(380, 780, t),
+      retargetMin: lerp(1.75, 0.58, t),
+      retargetMax: lerp(3.2, 1.25, t),
+      speedMult: lerp(0.78, 1.0, t),
+      targetPlayerChance: lerp(0.18, 0.5, t),
+    };
+  }
+
+  function loadAccounts() {
+    try {
+      const o = JSON.parse(localStorage.getItem(ACCOUNTS_KEY) || "{}");
+      return o && typeof o === "object" ? o : {};
+    } catch (_) {
+      return {};
+    }
+  }
+
+  function saveAccounts(a) {
+    try { localStorage.setItem(ACCOUNTS_KEY, JSON.stringify(a)); } catch (_) {}
+  }
+
+  function normalizeUsername(raw) {
+    return String(raw || "").trim().toLowerCase().replace(/[^a-z0-9_]/g, "").slice(0, 16);
+  }
+
+  function randomSalt() {
+    const a = new Uint8Array(16);
+    crypto.getRandomValues(a);
+    return Array.from(a, (x) => x.toString(16).padStart(2, "0")).join("");
+  }
+
+  async function sha256Hex(str) {
+    if (typeof crypto !== "undefined" && crypto.subtle) {
+      const enc = new TextEncoder();
+      const buf = await crypto.subtle.digest("SHA-256", enc.encode(str));
+      return Array.from(new Uint8Array(buf), (b) => b.toString(16).padStart(2, "0")).join("");
+    }
+    throw new Error("SHA-256 not available");
+  }
+
+  async function hashPassword(password, salt) {
+    try {
+      return await sha256Hex(salt + "\n" + password);
+    } catch (_) {
+      let h = salt + "\n" + password;
+      for (let i = 0; i < 800; i++) {
+        let x = 0;
+        for (let j = 0; j < h.length; j++) x = ((x << 5) - x + h.charCodeAt(j)) | 0;
+        h = (x >>> 0).toString(16) + h;
+      }
+      return "fb_" + h.slice(0, 64);
+    }
+  }
+
+  function defaultProfile(displayName) {
+    return {
+      displayName: displayName || "You",
+      dotColor: "#4af0ff",
+      difficulty: "intermediate",
+      stats: { games: 0, wins: 0, kills: 0 },
+    };
+  }
+
+  function loadProfile(slug) {
+    try {
+      const p = JSON.parse(localStorage.getItem(userProfileKey(slug)) || "null");
+      if (p && typeof p === "object") {
+        const d = defaultProfile();
+        return {
+          displayName: String(p.displayName || d.displayName).slice(0, 16),
+          dotColor: /^#[0-9a-fA-F]{6}$/.test(p.dotColor) ? p.dotColor : d.dotColor,
+          difficulty: BOT_DIFFICULTY_ORDER.includes(p.difficulty) ? p.difficulty : d.difficulty,
+          stats: {
+            games: Math.max(0, p.stats && p.stats.games | 0),
+            wins: Math.max(0, p.stats && p.stats.wins | 0),
+            kills: Math.max(0, p.stats && p.stats.kills | 0),
+          },
+        };
+      }
+    } catch (_) {}
+    const acc = loadAccounts()[slug];
+    return defaultProfile(acc ? acc.displayName : slug);
+  }
+
+  function saveProfile(slug, profile) {
+    if (!slug) return;
+    try {
+      localStorage.setItem(userProfileKey(slug), JSON.stringify(profile));
+    } catch (_) {}
+  }
+
+  function loadSessionUser() {
+    try {
+      const s = JSON.parse(localStorage.getItem(SESSION_KEY) || "null");
+      const slug = s && s.slug ? String(s.slug) : "";
+      if (slug && loadAccounts()[slug]) {
+        currentUserSlug = slug;
+      } else {
+        currentUserSlug = null;
+        if (slug) localStorage.removeItem(SESSION_KEY);
+      }
+    } catch (_) {
+      currentUserSlug = null;
+    }
+  }
+
+  function applyProfileToMenu(profile) {
+    nameInput.value = profile.displayName.slice(0, 12);
+    colorInput.value = profile.dotColor;
+    menuDotPreview.style.background = profile.dotColor;
+    if (botDifficultySelect) botDifficultySelect.value = profile.difficulty;
+  }
+
+  function profileFromMenu() {
+    const diff = botDifficultySelect && botDifficultySelect.value;
+    return {
+      displayName: (nameInput.value || "You").trim().slice(0, 12) || "You",
+      dotColor: colorInput.value || "#4af0ff",
+      difficulty: BOT_DIFFICULTY_ORDER.includes(diff) ? diff : "intermediate",
+      stats: currentUserSlug ? loadProfile(currentUserSlug).stats : { games: 0, wins: 0, kills: 0 },
+    };
+  }
+
+  function saveProfileFromMenu() {
+    if (!currentUserSlug) return;
+    const cur = loadProfile(currentUserSlug);
+    const next = profileFromMenu();
+    next.stats = cur.stats;
+    saveProfile(currentUserSlug, next);
+    try {
+      localStorage.setItem(botDifficultyStorageKey(currentUserSlug), next.difficulty);
+    } catch (_) {}
+    const accounts = loadAccounts();
+    if (accounts[currentUserSlug]) {
+      accounts[currentUserSlug].displayName = next.displayName;
+      saveAccounts(accounts);
+    }
+  }
+
+  function refreshAccountStatsUI() {
+    if (!accountStats || !currentUserSlug) return;
+    const s = loadProfile(currentUserSlug).stats;
+    accountStats.innerHTML =
+      "Saved on this device — <strong>" + s.games + "</strong> games · " +
+      "<strong>" + s.wins + "</strong> wins · <strong>" + s.kills + "</strong> total kills";
+  }
+
+  function updateMenuAuthUI() {
+    const ok = !!currentUserSlug;
+    if (authCard) authCard.hidden = ok;
+    if (gameMenuCard) gameMenuCard.hidden = !ok;
+    if (ok && loggedInName) {
+      const acc = loadAccounts()[currentUserSlug];
+      loggedInName.textContent = acc ? acc.displayName : currentUserSlug;
+      const profile = loadProfile(currentUserSlug);
+      applyProfileToMenu(profile);
+      refreshAccountStatsUI();
+    }
+  }
+
+  function setAuthTab(which) {
+    const loginOn = which === "login";
+    if (tabLogin) tabLogin.classList.toggle("active", loginOn);
+    if (tabRegister) tabRegister.classList.toggle("active", !loginOn);
+    if (loginForm) loginForm.hidden = !loginOn;
+    if (registerForm) registerForm.hidden = loginOn;
+    if (authMsg) authMsg.textContent = "";
+  }
+
+  async function handleRegister(e) {
+    if (e) e.preventDefault();
+    authMsg.textContent = "";
+    authMsg.classList.remove("ok");
+    const raw = regUser.value;
+    const u = normalizeUsername(raw);
+    if (u.length < 3) {
+      authMsg.textContent = "Username needs at least 3 letters or numbers (a–z, 0–9, _).";
+      return;
+    }
+    const p = regPass.value;
+    if (p.length < 4) {
+      authMsg.textContent = "Password must be at least 4 characters.";
+      return;
+    }
+    if (p !== regPass2.value) {
+      authMsg.textContent = "Passwords do not match.";
+      return;
+    }
+    const accounts = loadAccounts();
+    if (accounts[u]) {
+      authMsg.textContent = "That username is already taken.";
+      return;
+    }
+    const displayName = raw.trim().slice(0, 16).replace(/[^\w\s\-]/g, "") || u;
+    const salt = randomSalt();
+    const hash = await hashPassword(p, salt);
+    accounts[u] = { displayName, salt, hash, createdAt: Date.now() };
+    saveAccounts(accounts);
+    saveProfile(u, defaultProfile(displayName));
+    currentUserSlug = u;
+    localStorage.setItem(SESSION_KEY, JSON.stringify({ slug: u }));
+    localStorage.setItem(botDifficultyStorageKey(u), "intermediate");
+    regPass.value = "";
+    regPass2.value = "";
+    authMsg.textContent = "Account created. You are logged in.";
+    authMsg.classList.add("ok");
+    updateMenuAuthUI();
+  }
+
+  async function handleLogin(e) {
+    if (e) e.preventDefault();
+    authMsg.textContent = "";
+    authMsg.classList.remove("ok");
+    const u = normalizeUsername(loginUser.value);
+    const p = loginPass.value;
+    if (u.length < 1 || !p) {
+      authMsg.textContent = "Enter username and password.";
+      return;
+    }
+    const accounts = loadAccounts();
+    const acc = accounts[u];
+    if (!acc) {
+      authMsg.textContent = "Wrong username or password. Use Register if you are new on this device.";
+      return;
+    }
+    const h = await hashPassword(p, acc.salt);
+    if (h !== acc.hash) {
+      authMsg.textContent = "Wrong username or password.";
+      return;
+    }
+    currentUserSlug = u;
+    localStorage.setItem(SESSION_KEY, JSON.stringify({ slug: u }));
+    loginPass.value = "";
+    authMsg.textContent = "";
+    updateMenuAuthUI();
+  }
+
+  function logoutAccount() {
+    saveProfileFromMenu();
+    currentUserSlug = null;
+    localStorage.removeItem(SESSION_KEY);
+    if (authMsg) authMsg.textContent = "";
+    updateMenuAuthUI();
+  }
+
+  function deleteCurrentAccount() {
+    if (!currentUserSlug) return;
+    const slug = currentUserSlug;
+    const acc = loadAccounts()[slug];
+    const label = acc ? acc.displayName : slug;
+    if (!confirm('Delete account "' + label + '" on this device?\n\nAll saved settings and stats for this account will be removed.')) return;
+    if (!confirm("Really delete this account from this browser?")) return;
+    const typed = prompt("Type DELETE in capitals to confirm:");
+    if (typed !== "DELETE") {
+      alert("Cancelled — nothing was deleted.");
+      return;
+    }
+    const accounts = loadAccounts();
+    delete accounts[slug];
+    saveAccounts(accounts);
+    localStorage.removeItem(userProfileKey(slug));
+    localStorage.removeItem(botDifficultyStorageKey(slug));
+    logoutAccount();
+  }
+
+  function placementLabel(place) {
+    const n = Math.max(1, Math.min(TOTAL_DOTS, Math.round(place)));
+    const mod10 = n % 10;
+    const mod100 = n % 100;
+    let suffix = "th";
+    if (mod100 < 11 || mod100 > 13) {
+      if (mod10 === 1) suffix = "st";
+      else if (mod10 === 2) suffix = "nd";
+      else if (mod10 === 3) suffix = "rd";
+    }
+    return n + suffix + " place";
+  }
+
+  function recordPlacement(victim) {
+    if (!victim || !victim.alive || victim.finishPlace != null) return;
+    const place = dots.filter((d) => d.alive).length;
+    victim.finishPlace = place;
+    matchStandings.push({
+      id: victim.id,
+      name: victim.name,
+      place,
+      isPlayer: !!victim.isPlayer,
+    });
+  }
+
+  function ensureWinnerPlaced(winner) {
+    if (!winner || winner.finishPlace != null) return;
+    winner.finishPlace = 1;
+    matchStandings.push({
+      id: winner.id,
+      name: winner.name,
+      place: 1,
+      isPlayer: !!winner.isPlayer,
+    });
+  }
+
+  function renderEndLeaderboard() {
+    const rows = matchStandings.slice().sort((a, b) => a.place - b.place);
+    if (!rows.length) {
+      endLeaderboard.hidden = true;
+      endLeaderboard.innerHTML = "";
+      return;
+    }
+    endLeaderboard.hidden = false;
+    endLeaderboard.innerHTML =
+      '<div class="end-lb-title">Leaderboard</div>' +
+      '<ul class="end-lb-list">' +
+      rows.map((row) => {
+        const cls = row.isPlayer ? ' class="end-lb-you"' : "";
+        return (
+          "<li" + cls + ">" +
+          '<span class="end-lb-rank">' + placementLabel(row.place) + "</span>" +
+          "<span>" + row.name + "</span>" +
+          "</li>"
+        );
+      }).join("") +
+      "</ul>";
+  }
+
+  function showEndOverlay(opts) {
+    const title = opts.title || "Game over";
+    const place = opts.place;
+    const summary = opts.summary || "";
+    running = false;
+    endTitle.textContent = title;
+    if (place != null) {
+      endPlacement.textContent = placementLabel(place);
+      endPlacement.hidden = false;
+    } else {
+      endPlacement.hidden = true;
+    }
+    endSummary.textContent = summary;
+    renderEndLeaderboard();
+    endOverlay.hidden = false;
+    if (opts.record !== false && player) {
+      recordGameResult(!!opts.won, player.kills | 0);
+    }
+  }
+
+  function recordGameResult(won, kills) {
+    if (!currentUserSlug) return;
+    const profile = loadProfile(currentUserSlug);
+    profile.stats.games += 1;
+    profile.stats.kills += kills | 0;
+    if (won) profile.stats.wins += 1;
+    saveProfile(currentUserSlug, profile);
+    refreshAccountStatsUI();
+  }
+
+  function loadSavedDifficulty() {
+    try {
+      const key = botDifficultyStorageKey(currentUserSlug);
+      const s = localStorage.getItem(key);
+      if (s && BOT_DIFFICULTY_ORDER.includes(s)) return s;
+      if (currentUserSlug) {
+        return loadProfile(currentUserSlug).difficulty;
+      }
+    } catch (_) {}
+    return "intermediate";
+  }
+
+  function saveDifficulty(id) {
+    try {
+      localStorage.setItem(botDifficultyStorageKey(currentUserSlug), id);
+      if (currentUserSlug) {
+        const profile = loadProfile(currentUserSlug);
+        profile.difficulty = id;
+        saveProfile(currentUserSlug, profile);
+      }
+    } catch (_) {}
+  }
+
+  function populateDifficultySelect() {
+    if (!botDifficultySelect) return;
+    const saved = loadSavedDifficulty();
+    botDifficultySelect.innerHTML = "";
+    for (const id of BOT_DIFFICULTY_ORDER) {
+      const o = document.createElement("option");
+      o.value = id;
+      o.textContent = BOT_DIFFICULTY_LABELS[id] || id;
+      botDifficultySelect.appendChild(o);
+    }
+    botDifficultySelect.value = saved;
+  }
+
+  populateDifficultySelect();
+  botDifficultySelect.addEventListener("change", () => {
+    saveDifficulty(botDifficultySelect.value);
+    saveProfileFromMenu();
+  });
+  nameInput.addEventListener("change", saveProfileFromMenu);
+  colorInput.addEventListener("change", saveProfileFromMenu);
+  colorInput.addEventListener("input", () => {
+    menuDotPreview.style.background = colorInput.value;
+    saveProfileFromMenu();
+  });
+
+  if (tabLogin) tabLogin.addEventListener("click", () => setAuthTab("login"));
+  if (tabRegister) tabRegister.addEventListener("click", () => setAuthTab("register"));
+  if (loginForm) loginForm.addEventListener("submit", handleLogin);
+  if (registerForm) registerForm.addEventListener("submit", handleRegister);
+  document.getElementById("btnLogout").addEventListener("click", logoutAccount);
+  document.getElementById("btnDeleteAccount").addEventListener("click", deleteCurrentAccount);
+
+  loadSessionUser();
+  updateMenuAuthUI();
+
+  function screenToWorld(sx, sy) {
+    return { x: sx + camX, y: sy + camY };
+  }
+
+  function updateCamera() {
+    if (player && player.alive) {
+      camX = clamp(player.x - VIEW_W * 0.5, 0, Math.max(0, WORLD_W - VIEW_W));
+      camY = clamp(player.y - VIEW_H * 0.5, 0, Math.max(0, WORLD_H - VIEW_H));
+    } else {
+      camX = clamp(camX, 0, Math.max(0, WORLD_W - VIEW_W));
+      camY = clamp(camY, 0, Math.max(0, WORLD_H - VIEW_H));
+    }
+  }
+
+  function updateMouseFromEvent(e) {
+    const rect = canvas.getBoundingClientRect();
+    const sx = (e.clientX - rect.left) * (VIEW_W / rect.width);
+    const sy = (e.clientY - rect.top) * (VIEW_H / rect.height);
+    mouseScreenX = sx;
+    mouseScreenY = sy;
+    const w = screenToWorld(sx, sy);
+    mouseWorldX = w.x;
+    mouseWorldY = w.y;
+  }
+
+  function rand(a, b) { return a + Math.random() * (b - a); }
+  function randInt(a, b) { return Math.floor(rand(a, b + 1)); }
+  function clamp(v, lo, hi) { return Math.max(lo, Math.min(hi, v)); }
+  function dist(ax, ay, bx, by) {
+    const dx = bx - ax, dy = by - ay;
+    return Math.hypot(dx, dy);
+  }
+  function pickWeighted(table) {
+    let r = Math.random();
+    for (const [id, w] of table) {
+      r -= w;
+      if (r <= 0) return id;
+    }
+    return table[table.length - 1][0];
+  }
+
+  function pickGunTypeId() {
+    let r = Math.random();
+    for (const t of GUN_TYPES) {
+      r -= t.w;
+      if (r <= 0) return t.id;
+    }
+    return "rifle";
+  }
+
+  function getGunTypeMeta(typeId) {
+    if (typeId === "cats_claw") return { id: "cats_claw", label: "Cat's Claw" };
+    return GUN_TYPES.find((g) => g.id === typeId) || GUN_TYPES[0];
+  }
+
+  function isCatsClawGun(gun) {
+    return gun && gun.type === "cats_claw";
+  }
+
+  function makeCatsClawGun() {
+    const meta = getGunTypeMeta("cats_claw");
+    return {
+      rarity: "mythic",
+      color: "#ff4fa8",
+      label: "Mythic",
+      type: meta.id,
+      typeLabel: meta.label,
+      dmgMin: 90,
+      dmgMax: 130,
+      fireMs: 125,
+      spread: 0.028,
+    };
+  }
+
+  function makeBossDropGun() {
+    if (Math.random() < CATS_CLAW_DROP_CHANCE) return makeCatsClawGun();
+    return makeGun(pickWeighted(BOSS_DROP_WEIGHTS));
+  }
+
+  function normalizeGun(gun) {
+    if (!gun || typeof gun !== "object") return gun;
+    const meta = getGunTypeMeta(gun.type);
+    return {
+      ...gun,
+      type: meta.id,
+      typeLabel: meta.label,
+    };
+  }
+
+  function makeGun(rarityId, forcedTypeId) {
+    const r = RARITIES[rarityId];
+    const typeMeta = getGunTypeMeta(forcedTypeId || pickGunTypeId());
+    return {
+      rarity: rarityId,
+      color: r.color,
+      label: r.label,
+      type: typeMeta.id,
+      typeLabel: typeMeta.label,
+      dmgMin: r.dmg[0],
+      dmgMax: r.dmg[1],
+      fireMs: r.fireMs,
+      spread: r.spread,
+    };
+  }
+
+  function rollGunBaseDamage(g) {
+    return randInt(g.dmgMin, g.dmgMax);
+  }
+
+  function gunDamageAtDistance(gun, distance) {
+    const g = normalizeGun(gun);
+    let dmg = rollGunBaseDamage(g);
+    if (g.type === "minigun") {
+      const t = clamp(1 - distance / 420, 0, 1);
+      dmg *= 1 + 0.22 * t;
+    } else if (g.type === "sniper") {
+      const t = clamp((distance - 220) / 900, 0, 1);
+      dmg *= 1 + 0.28 * t;
+    }
+    return dmg;
+  }
+
+  function gunDamage(gun, distance) {
+    return Math.max(1, Math.round(gunDamageAtDistance(gun, distance)));
+  }
+
+  function gunExpectedDamageAtDistance(gun, distance) {
+    const g = normalizeGun(gun);
+    let dmg = (g.dmgMin + g.dmgMax) * 0.5;
+    if (g.type === "minigun") {
+      const t = clamp(1 - distance / 420, 0, 1);
+      dmg *= 1 + 0.22 * t;
+    } else if (g.type === "sniper") {
+      const t = clamp((distance - 220) / 900, 0, 1);
+      dmg *= 1 + 0.28 * t;
+    }
+    return dmg;
+  }
+
+  function aiTargetDistance(d) {
+    let tgt = d.aiTarget;
+    if (!tgt || !tgt.alive) {
+      const foes = dots.filter((x) => x.alive && x.id !== d.id)
+        .sort((a, b) => dist(d.x, d.y, a.x, a.y) - dist(d.x, d.y, b.x, b.y));
+      tgt = foes[0];
+    }
+    return tgt ? dist(d.x, d.y, tgt.x, tgt.y) : 350;
+  }
+
+  function estimateGunPower(gun, shotDistance) {
+    const g = normalizeGun(gun);
+    const dmg = gunExpectedDamageAtDistance(g, shotDistance);
+    return dmg / Math.max(g.fireMs / 1000, 0.08);
+  }
+
+  function aiSelectWeapon(d) {
+    const slots = [];
+    for (let i = 0; i < INV_SLOTS; i++) {
+      if (d.inventory[i] && isGunItem(d.inventory[i])) slots.push(i);
+    }
+    if (!slots.length) return;
+    if (Math.random() > 0.75) {
+      d.invIndex = slots[randInt(0, slots.length - 1)];
+      return;
+    }
+    const shotDist = aiTargetDistance(d);
+    let bestSlot = slots[0];
+    let bestScore = estimateGunPower(d.inventory[bestSlot], shotDist);
+    for (let j = 1; j < slots.length; j++) {
+      const slot = slots[j];
+      const score = estimateGunPower(d.inventory[slot], shotDist);
+      if (score > bestScore) {
+        bestScore = score;
+        bestSlot = slot;
+      }
+    }
+    d.invIndex = bestSlot;
+  }
+
+  function addGunToEntity(e, gun) {
+    gun = normalizeGun(gun);
+    if (e.isBoss && !isRareOrStronger(gun.rarity)) return false;
+    for (let i = 0; i < INV_SLOTS; i++) {
+      if (!e.inventory[i]) {
+        e.inventory[i] = gun;
+        if (e.invIndex < 0 || !e.inventory[e.invIndex]) e.invIndex = i;
+        return true;
+      }
+    }
+    groundGuns.push({ x: e.x, y: e.y, gun, life: null });
+    return false;
+  }
+
+  const AI_COLORS = [
+    "#ff6b6b", "#feca57", "#48dbfb", "#ff9ff3", "#54a0ff",
+    "#5f27cd", "#00d2d3", "#ff9f43", "#10ac84", "#ee5253",
+    "#c8d6e5", "#576574", "#f368e0", "#222f3e", "#8395a7",
+  ];
+
+  const BOT_ADJECTIVES = [
+    "squishy", "smart", "brave", "swift", "lazy", "happy", "angry", "tiny", "giant",
+    "sneaky", "noisy", "calm", "wild", "fuzzy", "rusty", "shiny", "dusty", "spicy",
+    "chilly", "zany", "sleepy", "jolly", "grim", "lucky", "cosmic", "icy", "sunny",
+  ];
+  const BOT_NOUNS = [
+    "tree", "cat", "fox", "bolt", "rock", "cloud", "frog", "hawk", "vine", "stone",
+    "flame", "drift", "pixel", "shard", "loop", "spark", "moss", "reed", "coral", "moth",
+    "wolf", "bear", "finch", "comet", "creek", "fern", "prism", "toad", "yak", "newt",
+  ];
+
+  function makeBotName(usedNames) {
+    for (let t = 0; t < 100; t++) {
+      const name =
+        BOT_ADJECTIVES[randInt(0, BOT_ADJECTIVES.length - 1)] +
+        BOT_NOUNS[randInt(0, BOT_NOUNS.length - 1)];
+      if (!usedNames.has(name)) {
+        usedNames.add(name);
+        return name;
+      }
+    }
+    const fallback = "bot" + randInt(1000, 9999);
+    usedNames.add(fallback);
+    return fallback;
+  }
+
+  function dropItemOnGround(x, y, item) {
+    if (!item) return;
+    const gx = clamp(x + rand(-18, 18), 24, WORLD_W - 24);
+    const gy = clamp(y + rand(-18, 18), 24, WORLD_H - 24);
+    if (isMedItem(item)) {
+      groundMeds.push({ x: gx, y: gy, potion: { ...item }, life: null });
+    } else if (isGunItem(item)) {
+      groundGuns.push({ x: gx, y: gy, gun: normalizeGun({ ...item }), life: null });
+    }
+  }
+
+  function dropVictimLoot(victim) {
+    for (let i = 0; i < INV_SLOTS; i++) {
+      const item = victim.inventory[i];
+      if (item) dropItemOnGround(victim.x, victim.y, item);
+    }
+  }
+
+  function spawnDot(opts) {
+    const pad = opts.isBoss ? BOSS_R + 8 : DOT_R + 8;
+    return {
+      id: opts.id,
+      name: opts.name,
+      x: rand(pad, WORLD_W - pad),
+      y: rand(pad, WORLD_H - pad),
+      vx: 0, vy: 0,
+      color: opts.color,
+      isPlayer: !!opts.isPlayer,
+      isBoss: !!opts.isBoss,
+      isAI: !!opts.isAI,
+      alive: true,
+      health: opts.isBoss ? 400 : MAX_HEALTH,
+      maxHealth: opts.isBoss ? 400 : MAX_HEALTH,
+      speed: opts.isBoss ? BOSS_SPEED : DOT_SPEED,
+      radius: opts.isBoss ? BOSS_R : DOT_R,
+      inventory: [null, null, null, null, null],
+      invIndex: 0,
+      lastShot: 0,
+      aiTarget: null,
+      aiWanderX: rand(pad, WORLD_W - pad),
+      aiWanderY: rand(pad, WORLD_H - pad),
+      aiRetargetAt: 0,
+      aiWallCooldownUntil: 0,
+      kills: 0,
+      finishPlace: null,
+      lastMedUse: 0,
+      wallCharges: WALL_MAX_CHARGES,
+      wallRechargeAt: 0,
+    };
+  }
+
+  function initGame() {
+    dots = [];
+    chests = [];
+    bullets = [];
+    groundGuns = [];
+    groundMeds = [];
+    damageTexts = [];
+    walls = [];
+    matchStandings = [];
+    playerName = (nameInput.value || "You").trim().slice(0, 12) || "You";
+    playerColor = colorInput.value;
+    const diffId = botDifficultySelect && botDifficultySelect.value
+      ? botDifficultySelect.value
+      : "intermediate";
+    saveDifficulty(diffId);
+    aiTune = getAiTune(diffId);
+
+    player = spawnDot({ id: 0, name: playerName, color: playerColor, isPlayer: true });
+    player.inventory[0] = makeGun("common");
+    dots.push(player);
+
+    const usedBotNames = new Set();
+    for (let i = 1; i < TOTAL_DOTS - BOSS_COUNT; i++) {
+      dots.push(spawnDot({
+        id: i,
+        name: makeBotName(usedBotNames),
+        color: AI_COLORS[(i - 1) % AI_COLORS.length],
+        isAI: true,
+      }));
+    }
+    for (let b = 0; b < BOSS_COUNT; b++) {
+      const id = TOTAL_DOTS - BOSS_COUNT + b;
+      const boss = spawnDot({
+        id,
+        name: "Boss " + (b + 1),
+        color: "#e74c3c",
+        isAI: true,
+        isBoss: true,
+      });
+      boss.inventory[0] = pickBossWeapon();
+      boss.invIndex = 0;
+      dots.push(boss);
+    }
+
+    const used = [];
+    function farEnough(x, y, minD) {
+      for (const p of used) {
+        if (dist(x, y, p.x, p.y) < minD) return false;
+      }
+      for (const d of dots) {
+        if (dist(x, y, d.x, d.y) < 200) return false;
+      }
+      return true;
+    }
+
+    for (let c = 0; c < CHEST_COUNT; c++) {
+      let x, y, tries = 0;
+      do {
+        x = rand(80, WORLD_W - 80);
+        y = rand(80, WORLD_H - 80);
+        tries++;
+      } while (!farEnough(x, y, 220) && tries < 120);
+      used.push({ x, y });
+      chests.push({ x, y, open: false, kind: "gun", gun: makeChestGun() });
+    }
+
+    for (let c = 0; c < MED_CHEST_COUNT; c++) {
+      let x, y, tries = 0;
+      do {
+        x = rand(80, WORLD_W - 80);
+        y = rand(80, WORLD_H - 80);
+        tries++;
+      } while (!farEnough(x, y, 200) && tries < 120);
+      used.push({ x, y });
+      chests.push({ x, y, open: false, kind: "med", potion: makeMedChestPotion() });
+    }
+
+    camX = clamp(player.x - VIEW_W * 0.5, 0, Math.max(0, WORLD_W - VIEW_W));
+    camY = clamp(player.y - VIEW_H * 0.5, 0, Math.max(0, WORLD_H - VIEW_H));
+
+    buildInventoryHud();
+    updateHud();
+  }
+
+  function buildInventoryHud() {
+    inventoryHud.innerHTML = "";
+    for (let i = 0; i < INV_SLOTS; i++) {
+      const el = document.createElement("div");
+      el.className = "inv-slot" + (player && player.invIndex === i ? " active" : "");
+      el.dataset.slot = i;
+      const num = document.createElement("span");
+      num.className = "slot-num";
+      num.textContent = i + 1;
+      el.appendChild(num);
+      inventoryHud.appendChild(el);
+    }
+  }
+
+  function refreshInventoryHud() {
+    const slots = inventoryHud.querySelectorAll(".inv-slot");
+    slots.forEach((el, i) => {
+      el.classList.toggle("active", player && player.invIndex === i);
+      const item = player && player.inventory[i];
+      let inner = el.querySelector(".item-dot");
+      let typeEl = el.querySelector(".gun-type");
+      if (!inner) {
+        inner = document.createElement("div");
+        inner.className = "item-dot";
+        el.appendChild(inner);
+      }
+      if (!typeEl) {
+        typeEl = document.createElement("div");
+        typeEl.className = "gun-type";
+        el.appendChild(typeEl);
+      }
+      if (item && isMedItem(item)) {
+        inner.className = "item-dot med-dot";
+        inner.style.background = item.color;
+        inner.style.display = "block";
+        typeEl.textContent = item.label;
+        typeEl.style.display = "block";
+        el.title = item.label + " (+" + item.heal + " HP) · Right-click to use";
+      } else if (item && isGunItem(item)) {
+        const ng = normalizeGun(item);
+        player.inventory[i] = ng;
+        inner.className = "item-dot gun-dot";
+        inner.style.background = ng.color;
+        inner.style.display = "block";
+        typeEl.textContent = ng.typeLabel;
+        typeEl.style.display = "block";
+        el.title = isCatsClawGun(ng) ? "Cat's Claw (Mythic, 90–130)" : ng.label + " " + ng.typeLabel;
+      } else {
+        inner.style.display = "none";
+        typeEl.style.display = "none";
+        el.title = "Empty";
+      }
+    });
+  }
+
+  function updateHud() {
+    if (!player) return;
+    const pct = clamp(player.health / MAX_HEALTH, 0, 1) * 100;
+    healthBarFill.style.width = pct + "%";
+    const hp = Math.ceil(player.health);
+    healthLabel.textContent = hp + " / " + MAX_HEALTH;
+    const alive = dots.filter(d => d.alive).length;
+    hud.innerHTML =
+      '<div class="hud-name">' + playerName + "</div>" +
+      '<div class="hud-line">Alive <strong>' + alive + "</strong> / " + TOTAL_DOTS +
+      " · Kills <strong>" + player.kills + "</strong></div>";
+    if (wallChargesHud && player) {
+      const now = performance.now();
+      updateEntityWallRecharge(player, now);
+      wallChargesHud.classList.remove("recharging", "empty");
+      if (player.wallCharges <= 0) {
+        const left = Math.max(0, (player.wallRechargeAt - now) / 1000);
+        wallChargesHud.textContent = "Walls recharging: " + left.toFixed(1) + "s";
+        wallChargesHud.classList.add("recharging");
+      } else {
+        wallChargesHud.textContent = "Walls: " + player.wallCharges + " / " + WALL_MAX_CHARGES + " · Right-click to build";
+      }
+    }
+    refreshInventoryHud();
+  }
+
+  function isMedItem(item) {
+    return item && item.itemKind === "med";
+  }
+
+  function isGunItem(item) {
+    return item && item.rarity;
+  }
+
+  function currentItem(e) {
+    if (!e || e.invIndex < 0) return null;
+    return e.inventory[e.invIndex] || null;
+  }
+
+  function currentGun(e) {
+    const item = currentItem(e);
+    return isGunItem(item) ? normalizeGun(item) : null;
+  }
+
+  function tryShoot(e, aimX, aimY, now, accuracy) {
+    const gun = currentGun(e);
+    if (!gun || now - e.lastShot < gun.fireMs) return;
+    e.lastShot = now;
+    let ang = Math.atan2(aimY - e.y, aimX - e.x);
+    if (e.isAI) {
+      const err = (1 - accuracy) * 0.78;
+      ang += rand(-err, err);
+    }
+    const spd = 520;
+    bullets.push({
+      x: e.x + Math.cos(ang) * (e.radius + 4),
+      y: e.y + Math.sin(ang) * (e.radius + 4),
+      ox: e.x,
+      oy: e.y,
+      vx: Math.cos(ang) * spd,
+      vy: Math.sin(ang) * spd,
+      ownerId: e.id,
+      gun,
+      color: gun.color,
+      life: 2.4,
+    });
+  }
+
+  function canPickupGroundGun(e, g, now) {
+    if (g.noPickupId === e.id && now < g.noPickupUntil) return false;
+    return true;
+  }
+
+  function dropCurrentWeapon(e) {
+    const gun = currentGun(e);
+    if (!gun) return false;
+    let ang;
+    if (e.isPlayer) {
+      ang = Math.atan2(mouseWorldY - e.y, mouseWorldX - e.x);
+    } else {
+      ang = rand(0, Math.PI * 2);
+    }
+    const off = e.radius + 32;
+    const gx = clamp(e.x + Math.cos(ang) * off, 24, WORLD_W - 24);
+    const gy = clamp(e.y + Math.sin(ang) * off, 24, WORLD_H - 24);
+    const now = performance.now();
+    e.inventory[e.invIndex] = null;
+    groundGuns.push({
+      x: gx,
+      y: gy,
+      gun: { ...gun },
+      life: 45,
+      noPickupId: e.id,
+      noPickupUntil: now + 500,
+    });
+    let next = -1;
+    for (let i = 0; i < INV_SLOTS; i++) {
+      if (e.inventory[i]) { next = i; break; }
+    }
+    e.invIndex = next >= 0 ? next : 0;
+    if (e.isPlayer) refreshInventoryHud();
+    return true;
+  }
+
+  function isBossOnlyRarity(rarity) {
+    return rarity === "legendary" || rarity === "mythic";
+  }
+
+  function isRareOrStronger(rarity) {
+    return rarity === "rare" || rarity === "epic" || isBossOnlyRarity(rarity);
+  }
+
+  function pickBossWeapon() {
+    return makeGun(pickWeighted(BOSS_WEAPON_WEIGHTS));
+  }
+
+  function sanitizeBossInventory(d) {
+    if (!d || !d.isBoss) return;
+    let hasValid = false;
+    for (let i = 0; i < INV_SLOTS; i++) {
+      const g = d.inventory[i];
+      if (!g) continue;
+      if (isMedItem(g)) {
+        d.inventory[i] = null;
+        continue;
+      }
+      if (!isRareOrStronger(g.rarity)) {
+        d.inventory[i] = null;
+      } else {
+        hasValid = true;
+      }
+    }
+    if (!hasValid) {
+      d.inventory[0] = pickBossWeapon();
+      d.invIndex = 0;
+    } else if (!d.inventory[d.invIndex]) {
+      for (let i = 0; i < INV_SLOTS; i++) {
+        if (d.inventory[i]) {
+          d.invIndex = i;
+          break;
+        }
+      }
+    }
+  }
+
+  function snapToGrid(v) {
+    return Math.round(v / GRID_STEP) * GRID_STEP;
+  }
+
+  function getSnappedWallPlacement(e, wx, wy) {
+    const sx = snapToGrid(wx);
+    const sy = snapToGrid(wy);
+    const dx = sx - e.x;
+    const dy = sy - e.y;
+    const angle = Math.abs(dx) >= Math.abs(dy) ? Math.PI * 0.5 : 0;
+    return { x: sx, y: sy, angle };
+  }
+
+  function wallExtentRadius(w) {
+    return Math.hypot(w.len * 0.5, w.thick * 0.5);
+  }
+
+  function wallOverlaps(w1, w2) {
+    return dist(w1.x, w1.y, w2.x, w2.y) < wallExtentRadius(w1) + wallExtentRadius(w2) + 10;
+  }
+
+  function bulletHitsWall(b, w) {
+    const cos = Math.cos(-w.angle);
+    const sin = Math.sin(-w.angle);
+    const lx = (b.x - w.x) * cos - (b.y - w.y) * sin;
+    const ly = (b.x - w.x) * sin + (b.y - w.y) * cos;
+    return Math.abs(lx) <= w.len * 0.5 && Math.abs(ly) <= w.thick * 0.5;
+  }
+
+  function pushEntityOutOfWall(e, w) {
+    const cos = Math.cos(-w.angle);
+    const sin = Math.sin(-w.angle);
+    const lx = (e.x - w.x) * cos - (e.y - w.y) * sin;
+    const ly = (e.x - w.x) * sin + (e.y - w.y) * cos;
+    const hl = w.len * 0.5;
+    const ht = w.thick * 0.5;
+    const cx = clamp(lx, -hl, hl);
+    const cy = clamp(ly, -ht, ht);
+    const dx = lx - cx;
+    const dy = ly - cy;
+    const r = e.radius;
+    const d2 = dx * dx + dy * dy;
+    if (d2 >= r * r) return false;
+
+    let pushX = 0;
+    let pushY = 0;
+    if (d2 > 1e-6) {
+      const d = Math.sqrt(d2);
+      const overlap = r - d + 0.01;
+      pushX = (dx / d) * overlap;
+      pushY = (dy / d) * overlap;
+    } else {
+      const distL = hl + lx;
+      const distR = hl - lx;
+      const distT = ht + ly;
+      const distB = ht - ly;
+      const minLR = Math.min(distL, distR);
+      const minTB = Math.min(distT, distB);
+      if (minLR < minTB) {
+        pushX = (distL < distR ? -(distL + r) : (distR + r));
+      } else {
+        pushY = (distT < distB ? -(distT + r) : (distB + r));
+      }
+    }
+
+    const wc = Math.cos(w.angle);
+    const ws = Math.sin(w.angle);
+    e.x += pushX * wc - pushY * ws;
+    e.y += pushX * ws + pushY * wc;
+    return true;
+  }
+
+  function resolveEntityWallCollisions(e) {
+    if (!e || !e.alive) return;
+    for (let iter = 0; iter < 3; iter++) {
+      let moved = false;
+      for (const w of walls) {
+        if (pushEntityOutOfWall(e, w)) moved = true;
+      }
+      e.x = clamp(e.x, e.radius, WORLD_W - e.radius);
+      e.y = clamp(e.y, e.radius, WORLD_H - e.radius);
+      if (!moved) break;
+    }
+  }
+
+  function drawWallShape(w, fill, stroke, hpPct) {
+    ctx.save();
+    ctx.translate(w.x, w.y);
+    ctx.rotate(w.angle);
+    const hl = w.len * 0.5;
+    const ht = w.thick * 0.5;
+    ctx.fillStyle = fill;
+    ctx.fillRect(-hl, -ht, w.len, w.thick);
+    ctx.strokeStyle = stroke;
+    ctx.lineWidth = 2;
+    ctx.strokeRect(-hl, -ht, w.len, w.thick);
+    if (hpPct != null) {
+      ctx.fillStyle = "#222";
+      ctx.fillRect(-hl + 4, ht - 7, w.len - 8, 4);
+      ctx.fillStyle = hpPct > 0.66 ? "#5d8a5d" : hpPct > 0.33 ? "#c9a227" : "#c0392b";
+      ctx.fillRect(-hl + 4, ht - 7, (w.len - 8) * hpPct, 4);
+    }
+    ctx.restore();
+  }
+
+  function updateEntityWallRecharge(e, now) {
+    if (!e) return;
+    if (e.wallCharges <= 0 && now >= e.wallRechargeAt) {
+      e.wallCharges = WALL_MAX_CHARGES;
+      e.wallRechargeAt = 0;
+    }
+  }
+
+  function tryPlaceWallForEntity(e, wx, wy, now) {
+    if (!e || !e.alive || e.wallCharges <= 0) return false;
+    updateEntityWallRecharge(e, now);
+    if (e.wallCharges <= 0) return false;
+    const ext = wallExtentRadius({ len: WALL_LENGTH, thick: WALL_THICK });
+    const snapped = getSnappedWallPlacement(e, wx, wy);
+    wx = clamp(snapped.x, ext + 4, WORLD_W - ext - 4);
+    wy = clamp(snapped.y, ext + 4, WORLD_H - ext - 4);
+    if (dist(e.x, e.y, wx, wy) > WALL_PLACE_MAX_DIST) return false;
+    if (dist(e.x, e.y, wx, wy) < e.radius + ext + 4) return false;
+    const wallAngle = snapped.angle;
+    const candidate = { x: wx, y: wy, len: WALL_LENGTH, thick: WALL_THICK, angle: wallAngle };
+    for (const w of walls) {
+      if (wallOverlaps(candidate, w)) return false;
+    }
+    for (const d of dots) {
+      if (!d.alive) continue;
+      if (dist(wx, wy, d.x, d.y) < d.radius + ext - 2) return false;
+    }
+    walls.push({
+      x: wx,
+      y: wy,
+      len: WALL_LENGTH,
+      thick: WALL_THICK,
+      angle: wallAngle,
+      hp: WALL_MAX_HP,
+      maxHp: WALL_MAX_HP,
+      ownerId: e.id,
+    });
+    e.wallCharges--;
+    if (e.wallCharges <= 0) e.wallRechargeAt = now + WALL_RECHARGE_MS;
+    return true;
+  }
+
+  function tryPlaceWall(now) {
+    if (!player || !player.alive) return false;
+    return tryPlaceWallForEntity(player, mouseWorldX, mouseWorldY, now);
+  }
+
+  function aiTryBuildWall(d, now, tune) {
+    updateEntityWallRecharge(d, now);
+    if (d.wallCharges <= 0 || now < d.aiWallCooldownUntil) return;
+
+    let tgt = d.aiTarget;
+    if (!tgt || !tgt.alive) {
+      const foes = dots.filter(x => x.alive && x.id !== d.id)
+        .sort((a, b) => dist(d.x, d.y, a.x, a.y) - dist(d.x, d.y, b.x, b.y));
+      tgt = foes[0];
+    }
+    if (!tgt) return;
+
+    const dToTgt = dist(d.x, d.y, tgt.x, tgt.y);
+    if (dToTgt < 65 || dToTgt > WALL_PLACE_MAX_DIST) return;
+    if (dToTgt > tune.shootRange * 0.92) return;
+
+    const hpRatio = d.health / d.maxHealth;
+    const hurt = hpRatio < 0.55;
+    const buildRoll = 0.05 + tune.accuracy * 0.1 + (d.isBoss ? 0.06 : 0);
+    if (!hurt && Math.random() > buildRoll) return;
+
+    const t = 0.28 + rand(0, 0.2);
+    const wx = d.x + (tgt.x - d.x) * t;
+    const wy = d.y + (tgt.y - d.y) * t;
+
+    if (tryPlaceWallForEntity(d, wx, wy, now)) {
+      d.aiWallCooldownUntil = now + rand(1400, 3800);
+    }
+  }
+
+  function makeChestGun() {
+    return makeGun(pickWeighted(CHEST_DROP_WEIGHTS));
+  }
+
+  function makeMedChestPotion() {
+    const id = pickWeighted(MED_POTION_WEIGHTS);
+    const p = MED_POTIONS[id];
+    return { itemKind: "med", id, label: p.label, color: p.color, heal: p.heal };
+  }
+
+  function addMedToEntity(e, potion) {
+    if (!e || !potion) return false;
+    const item = isMedItem(potion) ? { ...potion } : { ...potion, itemKind: "med" };
+    for (let i = 0; i < INV_SLOTS; i++) {
+      if (!e.inventory[i]) {
+        e.inventory[i] = item;
+        if (e.invIndex < 0 || !e.inventory[e.invIndex]) e.invIndex = i;
+        if (e.isPlayer) refreshInventoryHud();
+        return true;
+      }
+    }
+    groundMeds.push({ x: e.x, y: e.y, potion: item, life: null });
+    return false;
+  }
+
+  function applyPotionToEntity(e, potion) {
+    if (!e || !e.alive || !potion) return 0;
+    const before = e.health;
+    e.health = clamp(e.health + potion.heal, 0, e.maxHealth);
+    const gained = Math.round(e.health - before);
+    if (gained > 0) {
+      damageTexts.push({
+        x: e.x + rand(-10, 10),
+        y: e.y - e.radius - (e.isPlayer ? 14 : 24),
+        text: "+" + gained,
+        color: "#5cff8a",
+        life: e.isPlayer ? 1.1 : 0.85,
+        maxLife: e.isPlayer ? 1.1 : 0.85,
+        big: !!e.isPlayer,
+      });
+    }
+    return gained;
+  }
+
+  function tryUseMed(e, now) {
+    const item = currentItem(e);
+    if (!e || !e.alive || !isMedItem(item)) return false;
+    if (now - (e.lastMedUse || 0) < MED_USE_MS) return false;
+    if (e.health >= e.maxHealth) return false;
+    e.lastMedUse = now;
+    const gained = applyPotionToEntity(e, item);
+    if (gained <= 0) return false;
+    e.inventory[e.invIndex] = null;
+    let next = -1;
+    for (let i = 0; i < INV_SLOTS; i++) {
+      if (e.inventory[i]) { next = i; break; }
+    }
+    if (next >= 0) e.invIndex = next;
+    if (e.isPlayer) {
+      refreshInventoryHud();
+      updateHud();
+    }
+    return true;
+  }
+
+  function aiTryUseMed(d, now) {
+    if (d.health >= d.maxHealth * 0.92) return;
+    for (let i = 0; i < INV_SLOTS; i++) {
+      if (!isMedItem(d.inventory[i])) continue;
+      const prev = d.invIndex;
+      d.invIndex = i;
+      if (tryUseMed(d, now)) return;
+      d.invIndex = prev;
+    }
+  }
+
+  function openChestForEntity(e, ch) {
+    if (!ch || ch.open || !e || !e.alive) return;
+    ch.open = true;
+    if (ch.kind === "med") {
+      addMedToEntity(e, ch.potion);
+    } else if (ch.gun) {
+      if (addGunToEntity(e, ch.gun) && e.isAI) aiSelectWeapon(e);
+    }
+  }
+
+  function killEntity(killer, victim) {
+    recordPlacement(victim);
+    victim.alive = false;
+    if (killer) {
+      killer.kills++;
+      if (killer.isPlayer) {
+        killer.health = clamp(killer.health + KILL_HEAL, 0, MAX_HEALTH);
+      } else if (!killer.isPlayer) {
+        killer.health = clamp(killer.health + KILL_HEAL * 0.5, 0, killer.maxHealth);
+      }
+      if (killer.isAI) aiSelectWeapon(killer);
+    }
+    dropVictimLoot(victim);
+    if (victim.isBoss) {
+      dropItemOnGround(victim.x, victim.y, makeBossDropGun());
+    }
+    checkWin();
+  }
+
+  function checkWin() {
+    const alive = dots.filter(d => d.alive);
+    if (alive.length === 1 && running) {
+      const winner = alive[0];
+      ensureWinnerPlaced(winner);
+      if (winner.isPlayer) {
+        showEndOverlay({
+          title: "Victory!",
+          place: 1,
+          summary: "You are the last dot standing with " + player.kills + " kills.",
+          won: true,
+        });
+      } else {
+        showEndOverlay({
+          title: "Defeat",
+          place: player ? player.finishPlace : null,
+          summary: winner.name + " won the arena. You had " + (player ? player.kills : 0) + " kills.",
+          won: false,
+        });
+      }
+    }
+    if (alive.length === 0 && running) {
+      showEndOverlay({
+        title: "Draw",
+        place: player ? player.finishPlace : null,
+        summary: "Everyone was eliminated.",
+        won: false,
+      });
+    }
+  }
+
+  function updatePlayer(dt, now) {
+    if (!player || !player.alive) return;
+    let mx = 0, my = 0;
+    if (keys["w"] || keys["arrowup"]) my -= 1;
+    if (keys["s"] || keys["arrowdown"]) my += 1;
+    if (keys["a"] || keys["arrowleft"]) mx -= 1;
+    if (keys["d"] || keys["arrowright"]) mx += 1;
+    if (mx !== 0 || my !== 0) {
+      const len = Math.hypot(mx, my) || 1;
+      player.x += (mx / len) * player.speed * dt;
+      player.y += (my / len) * player.speed * dt;
+    }
+    player.x = clamp(player.x, player.radius, WORLD_W - player.radius);
+    player.y = clamp(player.y, player.radius, WORLD_H - player.radius);
+    resolveEntityWallCollisions(player);
+
+    if (shootMouseDown && currentGun(player)) tryShoot(player, mouseWorldX, mouseWorldY, now, 1);
+
+    for (const ch of chests) {
+      if (!ch.open && dist(player.x, player.y, ch.x, ch.y) < player.radius + 16) {
+        openChestForEntity(player, ch);
+      }
+    }
+
+    for (let i = groundGuns.length - 1; i >= 0; i--) {
+      const g = groundGuns[i];
+      if (!canPickupGroundGun(player, g, now)) continue;
+      if (dist(player.x, player.y, g.x, g.y) < player.radius + 14) {
+        addGunToEntity(player, g.gun);
+        groundGuns.splice(i, 1);
+      }
+    }
+
+    for (let i = groundMeds.length - 1; i >= 0; i--) {
+      const m = groundMeds[i];
+      if (dist(player.x, player.y, m.x, m.y) < player.radius + 14) {
+        if (addMedToEntity(player, m.potion)) groundMeds.splice(i, 1);
+      }
+    }
+  }
+
+  function updateAI(d, dt, now) {
+    if (!d.alive) return;
+    const tune = aiTune;
+    sanitizeBossInventory(d);
+
+    aiTryBuildWall(d, now, tune);
+    aiTryUseMed(d, now);
+
+    if (now >= d.aiRetargetAt) {
+      d.aiRetargetAt = now + rand(tune.retargetMin, tune.retargetMax) * 1000;
+      const enemies = dots.filter(x => x.alive && x.id !== d.id);
+      const medChestNear = chests.filter(c => !c.open && c.kind === "med").sort((a, b) =>
+        dist(d.x, d.y, a.x, a.y) - dist(d.x, d.y, b.x, b.y))[0];
+      const gunChestNear = chests.filter(c => !c.open && c.kind === "gun").sort((a, b) =>
+        dist(d.x, d.y, a.x, a.y) - dist(d.x, d.y, b.x, b.y))[0];
+      const gunNear = groundGuns.sort((a, b) =>
+        dist(d.x, d.y, a.x, a.y) - dist(d.x, d.y, b.x, b.y))[0];
+
+      if (gunNear && dist(d.x, d.y, gunNear.x, gunNear.y) < 320) {
+        d.aiWanderX = gunNear.x;
+        d.aiWanderY = gunNear.y;
+      } else if (
+        !d.isBoss &&
+        d.health < d.maxHealth * 0.55 &&
+        medChestNear &&
+        dist(d.x, d.y, medChestNear.x, medChestNear.y) < 620
+      ) {
+        d.aiWanderX = medChestNear.x;
+        d.aiWanderY = medChestNear.y;
+      } else if (!d.isBoss && gunChestNear && dist(d.x, d.y, gunChestNear.x, gunChestNear.y) < 520 && !currentGun(d)) {
+        d.aiWanderX = gunChestNear.x;
+        d.aiWanderY = gunChestNear.y;
+      } else if (enemies.length && Math.random() < 0.7) {
+        let tgt = null;
+        if (player && player.alive && Math.random() < tune.targetPlayerChance) {
+          tgt = player;
+        } else {
+          const sorted = enemies.slice().sort((a, b) =>
+            dist(d.x, d.y, a.x, a.y) - dist(d.x, d.y, b.x, b.y));
+          tgt = sorted[0] || enemies[Math.floor(Math.random() * enemies.length)];
+        }
+        d.aiTarget = tgt;
+        d.aiWanderX = tgt.x;
+        d.aiWanderY = tgt.y;
+      } else {
+        d.aiWanderX = rand(d.radius, WORLD_W - d.radius);
+        d.aiWanderY = rand(d.radius, WORLD_H - d.radius);
+        d.aiTarget = null;
+      }
+      aiSelectWeapon(d);
+    }
+
+    let tx = d.aiWanderX, ty = d.aiWanderY;
+    if (d.aiTarget && d.aiTarget.alive) {
+      tx = d.aiTarget.x;
+      ty = d.aiTarget.y;
+    }
+
+    const dx = tx - d.x, dy = ty - d.y;
+    const len = Math.hypot(dx, dy) || 1;
+    const moveSpd = d.speed * tune.speedMult;
+    d.x += (dx / len) * moveSpd * dt;
+    d.y += (dy / len) * moveSpd * dt;
+    d.x = clamp(d.x, d.radius, WORLD_W - d.radius);
+    d.y = clamp(d.y, d.radius, WORLD_H - d.radius);
+    resolveEntityWallCollisions(d);
+
+    for (const ch of chests) {
+      if (d.isBoss) continue;
+      if (!ch.open && dist(d.x, d.y, ch.x, ch.y) < d.radius + 16) {
+        openChestForEntity(d, ch);
+      }
+    }
+    for (let i = groundGuns.length - 1; i >= 0; i--) {
+      const g = groundGuns[i];
+      if (!canPickupGroundGun(d, g, now)) continue;
+      if (d.isBoss && !isRareOrStronger(g.gun.rarity)) continue;
+      if (dist(d.x, d.y, g.x, g.y) < d.radius + 14) {
+        if (addGunToEntity(d, g.gun)) aiSelectWeapon(d);
+        groundGuns.splice(i, 1);
+      }
+    }
+    for (let i = groundMeds.length - 1; i >= 0; i--) {
+      const m = groundMeds[i];
+      if (d.isBoss) continue;
+      if (dist(d.x, d.y, m.x, m.y) < d.radius + 14) {
+        if (addMedToEntity(d, m.potion)) groundMeds.splice(i, 1);
+      }
+    }
+
+    const gun = currentGun(d);
+    if (gun) {
+      let aim = d.aiTarget;
+      if (!aim || !aim.alive) {
+        const foes = dots.filter(x => x.alive && x.id !== d.id)
+          .sort((a, b) => dist(d.x, d.y, a.x, a.y) - dist(d.x, d.y, b.x, b.y));
+        aim = foes[0];
+      }
+      if (aim && dist(d.x, d.y, aim.x, aim.y) < tune.shootRange && Math.random() < 0.82) {
+        tryShoot(d, aim.x, aim.y, now, tune.accuracy);
+      }
+    }
+  }
+
+  function updateBullets(dt, now) {
+    for (let i = bullets.length - 1; i >= 0; i--) {
+      const b = bullets[i];
+      b.x += b.vx * dt;
+      b.y += b.vy * dt;
+      b.life -= dt;
+      if (b.life <= 0 || b.x < 0 || b.x > WORLD_W || b.y < 0 || b.y > WORLD_H) {
+        bullets.splice(i, 1);
+        continue;
+      }
+      const shotOwner = dots.find((d) => d.id === b.ownerId);
+      let hitWall = false;
+      for (let w = walls.length - 1; w >= 0; w--) {
+        const wall = walls[w];
+        if (!bulletHitsWall(b, wall)) continue;
+        wall.hp--;
+        damageTexts.push({
+          x: wall.x + rand(-6, 6),
+          y: wall.y - wallExtentRadius(wall) - 4,
+          text: wall.hp > 0 ? String(wall.hp) : "×",
+          color: "#bbb",
+          life: 0.5,
+          maxLife: 0.5,
+          big: false,
+        });
+        if (wall.hp <= 0) walls.splice(w, 1);
+        bullets.splice(i, 1);
+        hitWall = true;
+        break;
+      }
+      if (hitWall) continue;
+      for (const d of dots) {
+        if (!d.alive || d.id === b.ownerId) continue;
+        if (dist(b.x, b.y, d.x, d.y) < d.radius + 3) {
+          const hitDist = dist(b.ox, b.oy, b.x, b.y);
+          const dmg = gunDamage(b.gun, hitDist);
+          d.health -= dmg;
+          const playerHit = shotOwner && shotOwner.isPlayer;
+          const dmgFloatY = d.y - d.radius - (d.isPlayer ? 14 : 28);
+          damageTexts.push({
+            x: d.x + rand(-12, 12),
+            y: dmgFloatY,
+            text: String(dmg),
+            color: playerHit ? (isCatsClawGun(b.gun) ? "#ffe566" : "#fff") : b.color,
+            life: playerHit ? 1.35 : 0.9,
+            maxLife: playerHit ? 1.35 : 0.9,
+            big: playerHit,
+          });
+          bullets.splice(i, 1);
+          if (d.health <= 0) {
+            killEntity(shotOwner, d);
+          }
+          break;
+        }
+      }
+    }
+  }
+
+  function updateGround(dt) {
+    for (let i = groundGuns.length - 1; i >= 0; i--) {
+      const life = groundGuns[i].life;
+      if (life == null || life < 0) continue;
+      groundGuns[i].life -= dt;
+      if (groundGuns[i].life <= 0) groundGuns.splice(i, 1);
+    }
+    for (let i = groundMeds.length - 1; i >= 0; i--) {
+      const life = groundMeds[i].life;
+      if (life == null || life < 0) continue;
+      groundMeds[i].life -= dt;
+      if (groundMeds[i].life <= 0) groundMeds.splice(i, 1);
+    }
+    for (let i = damageTexts.length - 1; i >= 0; i--) {
+      const t = damageTexts[i];
+      t.life -= dt;
+      t.y -= (t.big ? 42 : 28) * dt;
+      if (t.life <= 0) damageTexts.splice(i, 1);
+    }
+  }
+
+  function drawMinimap() {
+    const mw = minimap.width;
+    const mh = minimap.height;
+    const sx = mw / WORLD_W;
+    const sy = mh / WORLD_H;
+    mctx.fillStyle = "#080808";
+    mctx.fillRect(0, 0, mw, mh);
+    mctx.strokeStyle = "#333";
+    mctx.strokeRect(0.5, 0.5, mw - 1, mh - 1);
+
+    for (const w of walls) {
+      mctx.fillStyle = "#556";
+      mctx.fillRect(w.x * sx - 1, w.y * sy - 1, 3, 3);
+    }
+    for (const ch of chests) {
+      if (ch.open) continue;
+      mctx.fillStyle = ch.kind === "med" ? "#3d9e55" : "#8B6914";
+      mctx.fillRect(ch.x * sx - 1, ch.y * sy - 1, 3, 3);
+    }
+    for (const d of dots) {
+      if (!d.alive) continue;
+      mctx.fillStyle = d.isPlayer ? "#4af0ff" : d.isBoss ? "#e74c3c" : d.color;
+      const r = d.isBoss ? 3.5 : d.isPlayer ? 3 : 2;
+      mctx.beginPath();
+      mctx.arc(d.x * sx, d.y * sy, r, 0, Math.PI * 2);
+      mctx.fill();
+    }
+    mctx.strokeStyle = "rgba(255,255,255,0.85)";
+    mctx.lineWidth = 1;
+    mctx.strokeRect(camX * sx, camY * sy, VIEW_W * sx, VIEW_H * sy);
+  }
+
+  function draw() {
+    ctx.fillStyle = "#050508";
+    ctx.fillRect(0, 0, VIEW_W, VIEW_H);
+
+    ctx.save();
+    ctx.translate(-camX, -camY);
+
+    const pad = GRID_STEP * 2;
+    const x0 = Math.max(0, Math.floor((camX - pad) / GRID_STEP) * GRID_STEP);
+    const x1 = Math.min(WORLD_W, camX + VIEW_W + pad);
+    const y0 = Math.max(0, Math.floor((camY - pad) / GRID_STEP) * GRID_STEP);
+    const y1 = Math.min(WORLD_H, camY + VIEW_H + pad);
+
+    ctx.strokeStyle = "#1a1a22";
+    ctx.lineWidth = 1;
+    for (let x = x0; x <= x1; x += GRID_STEP) {
+      ctx.beginPath();
+      ctx.moveTo(x, 0);
+      ctx.lineTo(x, WORLD_H);
+      ctx.stroke();
+    }
+    for (let y = y0; y <= y1; y += GRID_STEP) {
+      ctx.beginPath();
+      ctx.moveTo(0, y);
+      ctx.lineTo(WORLD_W, y);
+      ctx.stroke();
+    }
+    ctx.strokeStyle = "#3a3a55";
+    ctx.lineWidth = 4;
+    ctx.strokeRect(2, 2, WORLD_W - 4, WORLD_H - 4);
+
+    for (const ch of chests) {
+      if (ch.open) continue;
+      if (ch.kind === "med") {
+        ctx.fillStyle = "#2d6a3a";
+        ctx.fillRect(ch.x - 12, ch.y - 10, 24, 18);
+        ctx.fillStyle = "#4caf50";
+        ctx.fillRect(ch.x - 10, ch.y - 12, 20, 6);
+        const pot = ch.potion;
+        ctx.fillStyle = pot ? pot.color : "#9e9e9e";
+        ctx.fillRect(ch.x - 3, ch.y - 6, 6, 10);
+        ctx.fillStyle = "rgba(255,255,255,0.35)";
+        ctx.fillRect(ch.x - 2, ch.y - 5, 4, 3);
+      } else {
+        ctx.fillStyle = "#8B4513";
+        ctx.fillRect(ch.x - 12, ch.y - 10, 24, 18);
+        ctx.fillStyle = "#daa520";
+        ctx.fillRect(ch.x - 10, ch.y - 12, 20, 6);
+        if (ch.gun) {
+          ctx.fillStyle = ch.gun.color;
+          ctx.beginPath();
+          ctx.arc(ch.x, ch.y - 4, 4, 0, Math.PI * 2);
+          ctx.fill();
+        }
+      }
+    }
+
+    for (const g of groundGuns) {
+      const gg = normalizeGun(g.gun);
+      g.gun = gg;
+      ctx.fillStyle = g.gun.color;
+      ctx.fillRect(g.x - 10, g.y - 3, 20, 6);
+      ctx.strokeStyle = "rgba(255,255,255,0.3)";
+      ctx.strokeRect(g.x - 10, g.y - 3, 20, 6);
+      const sx = g.x - camX;
+      const sy = g.y - camY;
+      const inInventoryUiZone = sx < 260 && sy > VIEW_H - 90;
+      if (!inInventoryUiZone) {
+        ctx.fillStyle = "#bbb";
+        ctx.font = "9px system-ui";
+        ctx.textAlign = "center";
+        ctx.fillText(gg.typeLabel, g.x, g.y + 12);
+      }
+    }
+
+    for (const m of groundMeds) {
+      const pot = m.potion;
+      ctx.fillStyle = pot ? pot.color : "#9e9e9e";
+      ctx.fillRect(m.x - 4, m.y - 7, 8, 12);
+      ctx.strokeStyle = "rgba(255,255,255,0.35)";
+      ctx.strokeRect(m.x - 4, m.y - 7, 8, 12);
+    }
+
+    for (const w of walls) {
+      drawWallShape(w, "#3d4555", "#6a7a94", w.hp / w.maxHp);
+    }
+
+    if (player && player.alive && player.wallCharges > 0 && !isMedItem(currentItem(player))) {
+      const ext = wallExtentRadius({ len: WALL_LENGTH, thick: WALL_THICK });
+      const snapped = getSnappedWallPlacement(player, mouseWorldX, mouseWorldY);
+      const px = clamp(snapped.x, ext, WORLD_W - ext);
+      const py = clamp(snapped.y, ext, WORLD_H - ext);
+      const inRange = dist(player.x, player.y, px, py) <= WALL_PLACE_MAX_DIST;
+      const preview = {
+        x: px,
+        y: py,
+        len: WALL_LENGTH,
+        thick: WALL_THICK,
+        angle: snapped.angle,
+      };
+      drawWallShape(
+        preview,
+        inRange ? "rgba(61,69,85,0.55)" : "rgba(80,40,40,0.45)",
+        inRange ? "rgba(120,180,255,0.5)" : "rgba(255,100,100,0.4)",
+        null
+      );
+    }
+
+    for (const b of bullets) {
+      ctx.fillStyle = b.color;
+      ctx.beginPath();
+      ctx.arc(b.x, b.y, 3, 0, Math.PI * 2);
+      ctx.fill();
+    }
+
+    for (const t of damageTexts) {
+      const maxLife = t.maxLife || (t.big ? 1.35 : 0.9);
+      const alpha = clamp(t.life / maxLife, 0, 1);
+      ctx.textAlign = "center";
+      ctx.globalAlpha = alpha;
+      if (t.big) {
+        const size = 40 + (1 - alpha) * 18;
+        ctx.font = "900 " + Math.round(size) + "px system-ui, sans-serif";
+        ctx.strokeStyle = "rgba(0,0,0,0.8)";
+        ctx.lineWidth = 6;
+        ctx.strokeText(t.text, t.x, t.y);
+        ctx.fillStyle = t.color;
+        ctx.fillText(t.text, t.x, t.y);
+      } else {
+        ctx.fillStyle = t.color;
+        ctx.font = "bold 12px system-ui";
+        ctx.fillText(t.text, t.x, t.y);
+      }
+      ctx.globalAlpha = 1;
+    }
+
+    const sorted = [...dots].filter(d => d.alive).sort((a, b) => a.radius - b.radius);
+    for (const d of sorted) {
+      if (d.isBoss) {
+        ctx.strokeStyle = "rgba(231,76,60,0.5)";
+        ctx.lineWidth = 3;
+        ctx.beginPath();
+        ctx.arc(d.x, d.y, d.radius + 6, 0, Math.PI * 2);
+        ctx.stroke();
+      }
+      ctx.fillStyle = d.color;
+      ctx.beginPath();
+      ctx.arc(d.x, d.y, d.radius, 0, Math.PI * 2);
+      ctx.fill();
+      if (d.isPlayer) {
+        ctx.strokeStyle = "#fff";
+        ctx.lineWidth = 2;
+        ctx.stroke();
+      }
+      if (!d.isPlayer && d.health < d.maxHealth) {
+        const w = d.radius * 2;
+        const pct = d.health / d.maxHealth;
+        ctx.fillStyle = "#222";
+        ctx.fillRect(d.x - w / 2, d.y - d.radius - 10, w, 4);
+        ctx.fillStyle = d.isBoss ? "#e74c3c" : "#2ecc71";
+        ctx.fillRect(d.x - w / 2, d.y - d.radius - 10, w * pct, 4);
+      }
+      ctx.fillStyle = "#ccc";
+      ctx.font = "10px system-ui";
+      ctx.textAlign = "center";
+      ctx.fillText(d.name, d.x, d.y + d.radius + 12);
+    }
+
+    if (player && player.alive && shootMouseDown && currentGun(player)) {
+      ctx.strokeStyle = "rgba(255,255,255,0.15)";
+      ctx.setLineDash([4, 6]);
+      ctx.beginPath();
+      ctx.moveTo(player.x, player.y);
+      ctx.lineTo(mouseWorldX, mouseWorldY);
+      ctx.stroke();
+      ctx.setLineDash([]);
+    }
+
+    ctx.restore();
+    drawMinimap();
+  }
+
+  function loop(ts) {
+    if (!running) return;
+    const dt = Math.min(0.05, (ts - lastTs) / 1000 || 0.016);
+    lastTs = ts;
+    const now = ts;
+
+    updatePlayer(dt, now);
+    for (const d of dots) {
+      if (d.isAI) updateAI(d, dt, now);
+    }
+    updateBullets(dt, now);
+    updateGround(dt);
+    updateCamera();
+
+    if (player && !player.alive && running) {
+      showEndOverlay({
+        title: "Eliminated",
+        place: player.finishPlace,
+        summary: "Kills: " + player.kills + ".",
+        won: false,
+      });
+    }
+
+    updateHud();
+    draw();
+    requestAnimationFrame(loop);
+  }
+
+  function startGame() {
+    if (!currentUserSlug) {
+      alert("Log in or register first to play.");
+      return;
+    }
+    saveProfileFromMenu();
+    initGame();
+    menuScreen.hidden = true;
+    gameScreen.hidden = false;
+    endOverlay.hidden = true;
+    endPlacement.hidden = true;
+    endLeaderboard.hidden = true;
+    running = true;
+    lastTs = 0;
+    requestAnimationFrame(loop);
+  }
+
+  function toMainMenu() {
+    running = false;
+    gameScreen.hidden = true;
+    menuScreen.hidden = false;
+    endOverlay.hidden = true;
+    endPlacement.hidden = true;
+    endLeaderboard.hidden = true;
+    saveProfileFromMenu();
+    refreshAccountStatsUI();
+  }
+
+  document.getElementById("btnStart").addEventListener("click", startGame);
+  document.getElementById("btnPlayAgain").addEventListener("click", () => {
+    endOverlay.hidden = true;
+    endPlacement.hidden = true;
+    endLeaderboard.hidden = true;
+    startGame();
+  });
+  document.getElementById("btnMainMenu").addEventListener("click", toMainMenu);
+
+  canvas.addEventListener("mousemove", updateMouseFromEvent);
+  canvas.addEventListener("contextmenu", (e) => e.preventDefault());
+  canvas.addEventListener("mousedown", (e) => {
+    updateMouseFromEvent(e);
+    if (!player || !running) return;
+    if (e.button === 0) {
+      e.preventDefault();
+      shootMouseDown = true;
+    } else if (e.button === 2) {
+      e.preventDefault();
+      const now = performance.now();
+      if (isMedItem(currentItem(player))) tryUseMed(player, now);
+      else tryPlaceWall(now);
+    }
+  });
+  window.addEventListener("mouseup", (e) => {
+    if (e.button === 0) shootMouseDown = false;
+  });
+
+  window.addEventListener("keydown", (e) => {
+    const k = e.key.length === 1 ? e.key.toLowerCase() : e.key.toLowerCase();
+    keys[k] = true;
+    if (!player || !running) return;
+    if (e.code === "KeyQ" || k === "q") {
+      if (!e.repeat) {
+        e.preventDefault();
+        dropCurrentWeapon(player);
+      }
+      return;
+    }
+    const n = parseInt(e.key, 10);
+    if (n >= 1 && n <= 5) {
+      player.invIndex = n - 1;
+      refreshInventoryHud();
+    }
+  });
+  window.addEventListener("keyup", (e) => {
+    keys[e.key.toLowerCase()] = false;
+  });
+  canvas.addEventListener("wheel", (e) => {
+    if (!player || !running) return;
+    e.preventDefault();
+    let idx = player.invIndex;
+    idx += e.deltaY > 0 ? 1 : -1;
+    if (idx < 0) idx = INV_SLOTS - 1;
+    if (idx >= INV_SLOTS) idx = 0;
+    player.invIndex = idx;
+    refreshInventoryHud();
+  }, { passive: false });
+})();
+</script>
+</body>
+</html>
