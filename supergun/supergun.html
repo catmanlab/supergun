@@ -3,6 +3,8 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="supergun-ws-url" content="wss://games-supergun.onrender.com" />
+  <meta name="supergun-share-url" content="https://catmanlab.github.io/games/supergun/supergun.html" />
   <title>Supergun</title>
   <style>
     :root {
@@ -846,7 +848,7 @@
         <h3>Play on another device</h3>
         <div id="onlineStatus" class="online-status">Connecting…</div>
         <div id="onlineShareBox" class="online-share-box" hidden>
-          <label for="onlineShareUrl">Send this link to a phone or friend (same Wi‑Fi):</label>
+          <label for="onlineShareUrl">Send this link to a friend — anyone online can join:</label>
           <div class="online-share-row">
             <input id="onlineShareUrl" type="text" readonly aria-label="Share link" />
             <button type="button" id="btnCopyShareLink">Copy</button>
@@ -1143,6 +1145,14 @@
   let pendingOnlineBuild = false;
   let pendingOnlineDrop = false;
   const ONLINE_WS_PORT = 3847;
+  const ONLINE_SERVER_URL = (() => {
+    const meta = document.querySelector('meta[name="supergun-ws-url"]');
+    return (meta && meta.content) ? meta.content.trim() : "wss://games-supergun.onrender.com";
+  })();
+  const ONLINE_SHARE_URL = (() => {
+    const meta = document.querySelector('meta[name="supergun-share-url"]');
+    return (meta && meta.content) ? meta.content.trim() : "https://catmanlab.github.io/games/supergun/supergun.html";
+  })();
   const STATE_SEND_MS = 50;
 
   const onlineStatus = document.getElementById("onlineStatus");
@@ -1623,11 +1633,8 @@
 
   loadSessionUser();
   updateMenuAuthUI();
-  if (location.protocol === "file:") {
-    window.location.replace("http://127.0.0.1:" + ONLINE_WS_PORT + "/supergun.html");
-  } else if (location.protocol === "http:" || location.protocol === "https:") {
-    connectOnline();
-  }
+  fetchShareLinks();
+  connectOnline();
 
   function screenToWorld(sx, sy, cam) {
     return { x: sx + cam.x, y: sy + cam.y };
@@ -2971,7 +2978,11 @@
   }
 
   function isOnlinePageOk() {
-    return location.protocol === "http:" || location.protocol === "https:";
+    return true;
+  }
+
+  function isLocalDevHost() {
+    return location.hostname === "localhost" || location.hostname === "127.0.0.1";
   }
 
   function registerOnlinePlayer() {
@@ -2986,22 +2997,13 @@
   }
 
   function fetchShareLinks() {
-    if (!isOnlinePageOk() || !onlineShareUrl) return;
-    if (location.protocol === "https:") {
+    if (!onlineShareUrl) return;
+    if (location.protocol === "http:" || location.protocol === "https:") {
       onlineShareUrl.value = location.origin + location.pathname;
-      if (onlineShareBox) onlineShareBox.hidden = false;
-      return;
+    } else {
+      onlineShareUrl.value = ONLINE_SHARE_URL;
     }
-    fetch("/api/info")
-      .then((r) => r.json())
-      .then((data) => {
-        if (!data) return;
-        const link = data.phoneLink || (data.links && data.links[0]) || "";
-        if (!link) return;
-        onlineShareUrl.value = link;
-        if (onlineShareBox) onlineShareBox.hidden = false;
-      })
-      .catch(() => {});
+    if (onlineShareBox) onlineShareBox.hidden = false;
   }
 
   function renderOnlinePlayers() {
@@ -3056,11 +3058,14 @@
   }
 
   function getOnlineWsUrl() {
-    if (location.protocol === "http:" || location.protocol === "https:") {
-      const proto = location.protocol === "https:" ? "wss:" : "ws:";
-      return proto + "//" + location.host;
+    if (isLocalDevHost()) {
+      if (location.port === String(ONLINE_WS_PORT)) {
+        const proto = location.protocol === "https:" ? "wss:" : "ws:";
+        return proto + "//" + location.host;
+      }
+      return "ws://127.0.0.1:" + ONLINE_WS_PORT;
     }
-    return "ws://127.0.0.1:" + ONLINE_WS_PORT;
+    return ONLINE_SERVER_URL;
   }
 
   function showOnlineFeedback(text, isError) {
@@ -3072,10 +3077,7 @@
 
   function getOnlineOfflineReason() {
     if (!currentUserSlug) return "Log in first — online connects after you sign in.";
-    if (location.protocol === "file:") {
-      return "Wrong URL — double-click PLAY_SUPERGUN.bat, don't open the .html file directly.";
-    }
-    return "Server not connected — run PLAY_SUPERGUN.bat, then refresh this page.";
+    return "Connecting to online server… Free servers may take ~30s to wake up; refresh if needed.";
   }
 
   function setOnlineStatus(text, kind) {
@@ -3108,7 +3110,7 @@
     } else if (onlinePendingChallengeId) {
       setOnlineStatus("Challenge sent — waiting for them to accept…", "connected");
     } else if (onlineOtherPlayers < 1) {
-      setOnlineStatus("Online — send the link to another device, then challenge them from the list.", "connected");
+      setOnlineStatus("Online — send the link to a friend, then challenge them from the list.", "connected");
     } else {
       setOnlineStatus("Online — " + onlineOtherPlayers + " other device(s) connected. Tap Challenge next to their name!", "connected");
     }
@@ -3952,7 +3954,7 @@
       }
       if (onlineOtherPlayers < 1) {
         showOnlineFeedback(
-          "No other device online yet. Copy the link above and open it on a phone or another computer (same Wi‑Fi), then log in there.",
+          "No other players online yet. Copy the link above, send it to a friend, and have them log in.",
           true
         );
         return;

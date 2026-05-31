@@ -1,0 +1,12 @@
+services:
+  - type: web
+    name: games-supergun
+    runtime: node
+    rootDir: supergun/server
+    buildCommand: npm install
+    startCommand: npm start
+    plan: free
+    healthCheckPath: /health
+    envVars:
+      - key: PUBLIC_GAME_URL
+        value: https://catmanlab.github.io/games/supergun/supergun.html
