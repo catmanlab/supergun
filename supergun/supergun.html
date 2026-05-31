@@ -1136,6 +1136,7 @@
   let onlineOtherPlayers = 0;
   let onlinePlayerRoster = [];
   let onlinePendingChallengeId = null;
+  let onlineIncomingChallengeFrom = "";
   let onlineMatchRole = null;
   let onlineOpponentName = "";
   let onlineOpponentColor = "#fdcb6e";
@@ -2974,6 +2975,59 @@
   function sendOnline(msg) {
     if (onlineWs && onlineWs.readyState === WebSocket.OPEN) {
       onlineWs.send(JSON.stringify(msg));
+      return true;
+    }
+    return false;
+  }
+
+  function resetChallengeModalButtons() {
+    if (btnAcceptChallenge) {
+      btnAcceptChallenge.disabled = false;
+      btnAcceptChallenge.textContent = "Accept";
+    }
+    if (btnDeclineChallenge) btnDeclineChallenge.disabled = false;
+  }
+
+  function showIncomingChallenge(challengeId, fromName) {
+    onlinePendingChallengeId = challengeId;
+    onlineIncomingChallengeFrom = fromName || "Someone";
+    if (challengeFromName) challengeFromName.textContent = onlineIncomingChallengeFrom;
+    resetChallengeModalButtons();
+    if (challengeIncomingModal) challengeIncomingModal.hidden = false;
+    updateOnlineMenuUI();
+  }
+
+  function clearIncomingChallenge() {
+    onlinePendingChallengeId = null;
+    onlineIncomingChallengeFrom = "";
+    resetChallengeModalButtons();
+    if (challengeIncomingModal) challengeIncomingModal.hidden = true;
+  }
+
+  function acceptIncomingChallenge() {
+    if (!onlinePendingChallengeId) {
+      showOnlineFeedback("Challenge expired — ask them to send again.", true);
+      clearIncomingChallenge();
+      return;
+    }
+    if (!onlineConnected || !onlineWs || onlineWs.readyState !== WebSocket.OPEN) {
+      showOnlineFeedback("Reconnecting… tap Accept again in a moment.", false);
+      connectOnline();
+      return;
+    }
+    if (btnAcceptChallenge) {
+      btnAcceptChallenge.disabled = true;
+      btnAcceptChallenge.textContent = "Accepting…";
+    }
+    if (btnDeclineChallenge) btnDeclineChallenge.disabled = true;
+    const sent = sendOnline({
+      type: "challenge_response",
+      challengeId: onlinePendingChallengeId,
+      accept: true,
+    });
+    if (!sent) {
+      resetChallengeModalButtons();
+      showOnlineFeedback("Could not reach server — try again.", true);
     }
   }
 
@@ -3157,8 +3211,6 @@
     };
     onlineWs.onclose = () => {
       onlineConnected = false;
-      onlineMatchId = null;
-      onlinePendingChallengeId = null;
       onlinePlayerRoster = [];
       updateOnlineMenuUI();
       setTimeout(() => {
@@ -3240,16 +3292,12 @@
         showOnlineFeedback("Challenge sent to " + msg.targetName + "! Waiting for them to accept…", false);
         break;
       case "challenge_received":
-        onlinePendingChallengeId = msg.challengeId;
-        if (challengeFromName) challengeFromName.textContent = msg.fromName || "Someone";
-        if (challengeIncomingModal) challengeIncomingModal.hidden = false;
-        updateOnlineMenuUI();
+        showIncomingChallenge(msg.challengeId, msg.fromName);
         break;
       case "challenge_declined":
       case "challenge_expired":
       case "challenge_cancelled":
-        onlinePendingChallengeId = null;
-        if (challengeIncomingModal) challengeIncomingModal.hidden = true;
+        clearIncomingChallenge();
         updateOnlineMenuUI();
         if (msg.type === "challenge_declined") {
           setOnlineStatus("Challenge declined.", "error");
@@ -3259,12 +3307,12 @@
         break;
       case "error":
         showOnlineFeedback(msg.message || "Online error", true);
-        onlinePendingChallengeId = null;
+        resetChallengeModalButtons();
+        if (!onlineMatchId) clearIncomingChallenge();
         updateOnlineMenuUI();
         break;
       case "match_lobby":
-        onlinePendingChallengeId = null;
-        if (challengeIncomingModal) challengeIncomingModal.hidden = true;
+        clearIncomingChallenge();
         showMatchLobby(msg);
         break;
       case "lobby_settings":
@@ -3969,18 +4017,17 @@
     });
   }
   if (btnAcceptChallenge) {
-    btnAcceptChallenge.addEventListener("click", () => {
-      if (!onlinePendingChallengeId) return;
-      sendOnline({ type: "challenge_response", challengeId: onlinePendingChallengeId, accept: true });
-      if (challengeIncomingModal) challengeIncomingModal.hidden = true;
-    });
+    btnAcceptChallenge.addEventListener("click", acceptIncomingChallenge);
   }
   if (btnDeclineChallenge) {
     btnDeclineChallenge.addEventListener("click", () => {
       if (!onlinePendingChallengeId) return;
-      sendOnline({ type: "challenge_response", challengeId: onlinePendingChallengeId, accept: false });
-      onlinePendingChallengeId = null;
-      if (challengeIncomingModal) challengeIncomingModal.hidden = true;
+      sendOnline({
+        type: "challenge_response",
+        challengeId: onlinePendingChallengeId,
+        accept: false,
+      });
+      clearIncomingChallenge();
       updateOnlineMenuUI();
     });
   }

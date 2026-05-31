@@ -130,17 +130,100 @@ function findNearestClient(fromId) {
   return null;
 }
 
-function clearClientChallenge(client) {
-  if (!client.pendingChallengeId) return;
-  const ch = challenges.get(client.pendingChallengeId);
-  if (ch) {
-    challenges.delete(client.pendingChallengeId);
-    const other = getClient(ch.fromId === client.id ? ch.toId : ch.fromId);
-    if (other && other.pendingChallengeId === ch.id) {
-      other.pendingChallengeId = null;
+function removeChallenge(challengeId) {
+  challenges.delete(challengeId);
+}
+
+function cancelChallengesForUsername(username) {
+  if (!username) return;
+  for (const [challengeId, ch] of challenges.entries()) {
+    if (ch.fromUsername !== username && ch.toUsername !== username) continue;
+    removeChallenge(challengeId);
+    for (const c of clients.values()) {
+      if (c.pendingChallengeId !== challengeId) continue;
+      c.pendingChallengeId = null;
+      send(c.ws, { type: "challenge_cancelled", challengeId });
     }
   }
+}
+
+function clearClientChallenge(client) {
+  if (!client.username) {
+    client.pendingChallengeId = null;
+    return;
+  }
+  cancelChallengesForUsername(client.username);
   client.pendingChallengeId = null;
+}
+
+function notifyChallengeExpired(challengeId) {
+  const ch = challenges.get(challengeId);
+  if (!ch) return;
+  removeChallenge(challengeId);
+  for (const c of clients.values()) {
+    if (c.username !== ch.fromUsername && c.username !== ch.toUsername) continue;
+    if (c.pendingChallengeId === challengeId) c.pendingChallengeId = null;
+    send(c.ws, { type: "challenge_expired", challengeId });
+  }
+  broadcastPresence();
+}
+
+function findClientByUsername(username) {
+  if (!username) return null;
+  for (const client of clients.values()) {
+    if (client.username === username) return client;
+  }
+  return null;
+}
+
+function reattachClient(client) {
+  if (!client.username) return;
+
+  for (const ch of challenges.values()) {
+    if (ch.toUsername === client.username) {
+      ch.toId = client.id;
+      client.pendingChallengeId = ch.id;
+      send(client.ws, {
+        type: "challenge_received",
+        challengeId: ch.id,
+        fromName: ch.fromName || "Someone",
+      });
+    } else if (ch.fromUsername === client.username) {
+      ch.fromId = client.id;
+      client.pendingChallengeId = ch.id;
+      send(client.ws, {
+        type: "challenge_sent",
+        challengeId: ch.id,
+        targetName: ch.toName || "Opponent",
+      });
+    }
+  }
+
+  for (const match of matches.values()) {
+    let role = null;
+    let opponent = null;
+    if (match.hostUsername === client.username) {
+      match.hostId = client.id;
+      client.matchId = match.id;
+      role = "host";
+      opponent = findClientByUsername(match.guestUsername);
+    } else if (match.guestUsername === client.username) {
+      match.guestId = client.id;
+      client.matchId = match.id;
+      role = "guest";
+      opponent = findClientByUsername(match.hostUsername);
+    }
+    if (!role) continue;
+    send(client.ws, {
+      type: "match_lobby",
+      matchId: match.id,
+      role,
+      opponentName: opponent ? opponent.displayName : "Opponent",
+      opponentColor: opponent ? opponent.color : "#888",
+      difficulty: match.difficulty,
+      teamMode: match.teamMode,
+    });
+  }
 }
 
 function endMatch(matchId, reason, excludeId) {
@@ -161,13 +244,19 @@ function endMatch(matchId, reason, excludeId) {
 }
 
 function createChallenge(from, to) {
-  clearClientChallenge(from);
-  clearClientChallenge(to);
+  cancelChallengesForUsername(from.username);
+  cancelChallengesForUsername(to.username);
+  from.pendingChallengeId = null;
+  to.pendingChallengeId = null;
   const challengeId = newId();
   const challenge = {
     id: challengeId,
     fromId: from.id,
     toId: to.id,
+    fromUsername: from.username,
+    toUsername: to.username,
+    fromName: from.displayName,
+    toName: to.displayName,
     expiresAt: Date.now() + CHALLENGE_TTL_MS,
   };
   challenges.set(challengeId, challenge);
@@ -183,32 +272,21 @@ function createChallenge(from, to) {
     challengeId,
     fromName: from.displayName,
   });
-  setTimeout(() => {
-    const ch = challenges.get(challengeId);
-    if (!ch) return;
-    challenges.delete(challengeId);
-    const a = getClient(ch.fromId);
-    const b = getClient(ch.toId);
-    if (a && a.pendingChallengeId === challengeId) {
-      a.pendingChallengeId = null;
-      send(a.ws, { type: "challenge_expired", challengeId });
-    }
-    if (b && b.pendingChallengeId === challengeId) {
-      b.pendingChallengeId = null;
-      send(b.ws, { type: "challenge_expired", challengeId });
-    }
-    broadcastPresence();
-  }, CHALLENGE_TTL_MS);
+  setTimeout(() => notifyChallengeExpired(challengeId), CHALLENGE_TTL_MS);
 }
 
 function startLobby(from, to) {
-  clearClientChallenge(from);
-  clearClientChallenge(to);
+  removeChallenge(from.pendingChallengeId);
+  removeChallenge(to.pendingChallengeId);
+  from.pendingChallengeId = null;
+  to.pendingChallengeId = null;
   const matchId = newId();
   const match = {
     id: matchId,
     hostId: from.id,
     guestId: to.id,
+    hostUsername: from.username,
+    guestUsername: to.username,
     difficulty: "intermediate",
     teamMode: true,
     state: "lobby",
@@ -258,6 +336,7 @@ function handleMessage(client, msg) {
       client.displayName = String(msg.displayName || msg.username).slice(0, 12);
       client.color = String(msg.color || "#4af0ff").slice(0, 16);
       send(client.ws, { type: "registered" });
+      reattachClient(client);
       broadcastPresence();
       break;
     }
@@ -310,12 +389,20 @@ function handleMessage(client, msg) {
         send(client.ws, { type: "challenge_expired", challengeId: msg.challengeId });
         return;
       }
-      if (client.id !== ch.toId) {
+      const isRecipient =
+        client.id === ch.toId ||
+        (client.username && client.username === ch.toUsername);
+      if (!isRecipient) {
         send(client.ws, { type: "error", message: "Not your challenge." });
         return;
       }
-      const from = getClient(ch.fromId);
-      challenges.delete(ch.id);
+      ch.toId = client.id;
+      let from = getClient(ch.fromId);
+      if (!from || !from.username) {
+        from = findClientByUsername(ch.fromUsername);
+        if (from) ch.fromId = from.id;
+      }
+      removeChallenge(ch.id);
       if (from) from.pendingChallengeId = null;
       client.pendingChallengeId = null;
       if (!msg.accept) {
@@ -452,9 +539,11 @@ wss.on("connection", (ws) => {
 
   ws.on("close", () => {
     if (client.matchId) {
-      endMatch(client.matchId, "opponent_disconnected", client.id);
+      const match = matches.get(client.matchId);
+      if (match && match.state === "playing") {
+        endMatch(client.matchId, "opponent_disconnected", client.id);
+      }
     }
-    clearClientChallenge(client);
     clients.delete(id);
     broadcastPresence();
   });
