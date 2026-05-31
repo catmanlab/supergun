@@ -1137,6 +1137,7 @@
   let onlinePlayerRoster = [];
   let onlinePendingChallengeId = null;
   let onlineIncomingChallengeFrom = "";
+  let onlineGuestSynced = false;
   let onlineMatchRole = null;
   let onlineOpponentName = "";
   let onlineOpponentColor = "#fdcb6e";
@@ -3188,6 +3189,9 @@
 
   function connectOnline() {
     if (onlineWs) {
+      if (onlineWs.readyState === WebSocket.OPEN || onlineWs.readyState === WebSocket.CONNECTING) {
+        return;
+      }
       try { onlineWs.close(); } catch (_) {}
       onlineWs = null;
     }
@@ -3265,10 +3269,12 @@
     updateOnlineMenuUI();
   }
 
-  function hideMatchLobby() {
+  function hideMatchLobby(clearMatchId) {
     if (matchLobbyModal) matchLobbyModal.hidden = true;
-    onlineMatchId = null;
-    onlineMatchRole = null;
+    if (clearMatchId !== false) {
+      onlineMatchId = null;
+      onlineMatchRole = null;
+    }
     updateOnlineMenuUI();
   }
 
@@ -3313,6 +3319,7 @@
         break;
       case "match_lobby":
         clearIncomingChallenge();
+        if (onlineMode && running && msg.matchId === onlineMatchId) break;
         showMatchLobby(msg);
         break;
       case "lobby_settings":
@@ -3323,14 +3330,17 @@
         }
         break;
       case "match_start":
-        hideMatchLobby();
+        hideMatchLobby(false);
         startOnlineMatch(msg);
         break;
       case "player_input":
         if (onlineHost && msg.input) remoteInput = msg.input;
         break;
       case "game_state":
-        if (!onlineHost && msg.state) applyOnlineGameState(msg.state);
+        if (!onlineHost && msg.state) {
+          onlineGuestSynced = true;
+          applyOnlineGameState(msg.state);
+        }
         break;
       case "game_over":
         if (!onlineHost && msg.result) {
@@ -3385,27 +3395,31 @@
 
   function startOnlineMatch(cfg) {
     saveProfileFromMenu();
+    const resumeSameMatch = running && onlineMode && cfg.matchId === onlineMatchId;
     menuScreen.hidden = true;
     gameScreen.hidden = false;
     endOverlay.hidden = true;
     endPlacement.hidden = true;
     endLeaderboard.hidden = true;
+    onlineMatchId = cfg.matchId;
+    onlineMatchRole = cfg.role;
     running = true;
-    lastTs = 0;
+    if (!resumeSameMatch) lastTs = 0;
     if (cfg.role === "host") {
-      onlineMatchId = cfg.matchId;
+      onlineGuestSynced = true;
       initGame({
         onlineMode: true,
         onlineHost: true,
         difficulty: cfg.difficulty,
         teamMode: cfg.teamMode !== false,
-        opponentName: cfg.guestName,
-        opponentColor: cfg.guestColor,
+        opponentName: cfg.guestName || cfg.opponentName,
+        opponentColor: cfg.guestColor || cfg.opponentColor,
       });
     } else {
+      onlineGuestSynced = false;
       initOnlineGuestGame(cfg);
     }
-    requestAnimationFrame(loop);
+    if (!resumeSameMatch) requestAnimationFrame(loop);
   }
 
   function maybeSendOnlineState(now) {
@@ -3885,6 +3899,14 @@
       sendGuestOnlineInput();
       updateHud();
       draw();
+      if (!onlineGuestSynced) {
+        ctx.fillStyle = "rgba(0,0,0,0.55)";
+        ctx.fillRect(0, 0, VIEW_W, VIEW_H);
+        ctx.fillStyle = "#eee";
+        ctx.font = "600 16px system-ui";
+        ctx.textAlign = "center";
+        ctx.fillText("Syncing with host…", VIEW_W * 0.5, VIEW_H * 0.5);
+      }
       requestAnimationFrame(loop);
       return;
     }

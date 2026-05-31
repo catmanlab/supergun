@@ -9,6 +9,7 @@ const PUBLIC_GAME_URL =
   process.env.PUBLIC_GAME_URL ||
   "https://catmanlab.github.io/games/supergun/supergun.html";
 const CHALLENGE_TTL_MS = 60_000;
+const DISCONNECT_GRACE_MS = 60_000;
 
 /** @type {Map<string, Client>} */
 const clients = new Map();
@@ -176,6 +177,117 @@ function findClientByUsername(username) {
   return null;
 }
 
+function disconnectDuplicateUsers(client) {
+  if (!client.username) return;
+  for (const [cid, other] of clients.entries()) {
+    if (other.id === client.id || other.username !== client.username) continue;
+    other.skipDisconnectCleanup = true;
+    try {
+      other.ws.close();
+    } catch (_) {}
+    clients.delete(cid);
+  }
+}
+
+function isMatchHost(match, client) {
+  return (
+    client.id === match.hostId ||
+    (client.username && client.username === match.hostUsername)
+  );
+}
+
+function syncMatchClientIds(match) {
+  const host = findClientByUsername(match.hostUsername);
+  const guest = findClientByUsername(match.guestUsername);
+  if (host) {
+    match.hostId = host.id;
+    host.matchId = match.id;
+  }
+  if (guest) {
+    match.guestId = guest.id;
+    guest.matchId = match.id;
+  }
+  return { host, guest };
+}
+
+function buildMatchStartPayload(match, client) {
+  const { host, guest } = syncMatchClientIds(match);
+  if (!host || !guest) return null;
+  if (client.username === match.hostUsername) {
+    return {
+      type: "match_start",
+      matchId: match.id,
+      role: "host",
+      difficulty: match.difficulty,
+      teamMode: match.teamMode,
+      guestName: guest.displayName,
+      guestColor: guest.color,
+      opponentName: guest.displayName,
+      opponentColor: guest.color,
+    };
+  }
+  if (client.username === match.guestUsername) {
+    return {
+      type: "match_start",
+      matchId: match.id,
+      role: "guest",
+      difficulty: match.difficulty,
+      teamMode: match.teamMode,
+      hostName: host.displayName,
+      hostColor: host.color,
+    };
+  }
+  return null;
+}
+
+function buildMatchLobbyPayload(match, client) {
+  syncMatchClientIds(match);
+  const isHost = client.username === match.hostUsername;
+  const opponent = findClientByUsername(
+    isHost ? match.guestUsername : match.hostUsername
+  );
+  return {
+    type: "match_lobby",
+    matchId: match.id,
+    role: isHost ? "host" : "guest",
+    opponentName: opponent ? opponent.displayName : "Opponent",
+    opponentColor: opponent ? opponent.color : "#888",
+    difficulty: match.difficulty,
+    teamMode: match.teamMode,
+  };
+}
+
+function sendMatchSession(match, client) {
+  clearPlayerDisconnect(match, client.username);
+  if (match.state === "playing") {
+    const payload = buildMatchStartPayload(match, client);
+    if (payload) send(client.ws, payload);
+  } else {
+    send(client.ws, buildMatchLobbyPayload(match, client));
+  }
+}
+
+function clearPlayerDisconnect(match, username) {
+  if (!match || !username || !match.disconnected) return;
+  match.disconnected.delete(username);
+  if (match.disconnected.size === 0 && match.disconnectTimer) {
+    clearTimeout(match.disconnectTimer);
+    match.disconnectTimer = null;
+  }
+}
+
+function schedulePlayerDisconnect(match, username) {
+  if (!match || !username) return;
+  if (!match.disconnected) match.disconnected = new Set();
+  match.disconnected.add(username);
+  if (match.disconnectTimer) return;
+  match.disconnectTimer = setTimeout(() => {
+    match.disconnectTimer = null;
+    if (!matches.has(match.id)) return;
+    endMatch(match.id, "opponent_disconnected");
+  }, DISCONNECT_GRACE_MS);
+}
+
 function reattachClient(client) {
   if (!client.username) return;
 
@@ -200,47 +312,29 @@ function reattachClient(client) {
   }
 
   for (const match of matches.values()) {
-    let role = null;
-    let opponent = null;
-    if (match.hostUsername === client.username) {
-      match.hostId = client.id;
-      client.matchId = match.id;
-      role = "host";
-      opponent = findClientByUsername(match.guestUsername);
-    } else if (match.guestUsername === client.username) {
-      match.guestId = client.id;
-      client.matchId = match.id;
-      role = "guest";
-      opponent = findClientByUsername(match.hostUsername);
+    if (match.hostUsername !== client.username && match.guestUsername !== client.username) {
+      continue;
     }
-    if (!role) continue;
-    send(client.ws, {
-      type: "match_lobby",
-      matchId: match.id,
-      role,
-      opponentName: opponent ? opponent.displayName : "Opponent",
-      opponentColor: opponent ? opponent.color : "#888",
-      difficulty: match.difficulty,
-      teamMode: match.teamMode,
-    });
+    client.matchId = match.id;
+    sendMatchSession(match, client);
   }
 }
 
-function endMatch(matchId, reason, excludeId) {
+function endMatch(matchId, reason, excludeUsername) {
   const match = matches.get(matchId);
   if (!match) return;
+  if (match.disconnectTimer) {
+    clearTimeout(match.disconnectTimer);
+    match.disconnectTimer = null;
+  }
   matches.delete(matchId);
-  for (const pid of [match.hostId, match.guestId]) {
-    if (pid === excludeId) continue;
-    const c = getClient(pid);
+  for (const username of [match.hostUsername, match.guestUsername]) {
+    if (excludeUsername && username === excludeUsername) continue;
+    const c = findClientByUsername(username);
     if (!c) continue;
     c.matchId = null;
     send(c.ws, { type: "match_ended", matchId, reason });
   }
-  const host = getClient(match.hostId);
-  const guest = getClient(match.guestId);
-  if (host && host.matchId === matchId) host.matchId = null;
-  if (guest && guest.matchId === matchId) guest.matchId = null;
 }
 
 function createChallenge(from, to) {
@@ -318,11 +412,17 @@ function startLobby(from, to) {
 function relayToMatchPeer(client, msg, allowedTypes) {
   if (!client.matchId) return;
   const match = matches.get(client.matchId);
-  if (!match) return;
-  if (!allowedTypes.includes(msg.type)) return;
-  const peerId = client.id === match.hostId ? match.guestId : match.hostId;
-  const peer = getClient(peerId);
+  if (!match || !allowedTypes.includes(msg.type)) return;
+  if (msg.matchId && msg.matchId !== match.id) return;
+  const peer = getMatchPeer(match, client);
   if (peer) send(peer.ws, msg);
+}
+
+function getMatchPeer(match, client) {
+  syncMatchClientIds(match);
+  const isHost = isMatchHost(match, client);
+  const peerUsername = isHost ? match.guestUsername : match.hostUsername;
+  return findClientByUsername(peerUsername);
 }
 
 function handleMessage(client, msg) {
@@ -335,6 +435,7 @@ function handleMessage(client, msg) {
       client.username = msg.username.slice(0, 32);
       client.displayName = String(msg.displayName || msg.username).slice(0, 12);
       client.color = String(msg.color || "#4af0ff").slice(0, 16);
+      disconnectDuplicateUsers(client);
       send(client.ws, { type: "registered" });
       reattachClient(client);
       broadcastPresence();
@@ -421,7 +522,8 @@ function handleMessage(client, msg) {
     case "lobby_update": {
       if (!client.matchId) return;
       const match = matches.get(client.matchId);
-      if (!match || client.id !== match.hostId || match.state !== "lobby") return;
+      if (!match || !isMatchHost(match, client) || match.state !== "lobby") return;
+      match.hostId = client.id;
       if (msg.difficulty) match.difficulty = String(msg.difficulty).slice(0, 32);
       if (msg.teamMode != null) match.teamMode = !!msg.teamMode;
       relayToMatchPeer(client, {
@@ -434,41 +536,32 @@ function handleMessage(client, msg) {
     case "match_start": {
       if (!client.matchId) return;
       const match = matches.get(client.matchId);
-      if (!match || client.id !== match.hostId || match.state !== "lobby") return;
+      if (!match || match.state !== "lobby") return;
+      if (!isMatchHost(match, client)) return;
+      match.hostId = client.id;
       if (msg.difficulty) match.difficulty = String(msg.difficulty).slice(0, 32);
       if (msg.teamMode != null) match.teamMode = !!msg.teamMode;
       match.state = "playing";
-      const host = getClient(match.hostId);
-      const guest = getClient(match.guestId);
+      const { host, guest } = syncMatchClientIds(match);
       if (!host || !guest) {
-        endMatch(match.id, "opponent_disconnected");
+        match.state = "lobby";
+        send(client.ws, {
+          type: "error",
+          message: "Guest offline — wait for them to reconnect.",
+        });
         return;
       }
-      send(host.ws, {
-        type: "match_start",
-        matchId: match.id,
-        role: "host",
-        difficulty: match.difficulty,
-        teamMode: match.teamMode,
-        guestName: guest.displayName,
-        guestColor: guest.color,
-        opponentName: guest.displayName,
-        opponentColor: guest.color,
-      });
-      send(guest.ws, {
-        type: "match_start",
-        matchId: match.id,
-        role: "guest",
-        difficulty: match.difficulty,
-        teamMode: match.teamMode,
-        hostName: host.displayName,
-        hostColor: host.color,
-      });
+      clearPlayerDisconnect(match, match.hostUsername);
+      clearPlayerDisconnect(match, match.guestUsername);
+      const hostPayload = buildMatchStartPayload(match, host);
+      const guestPayload = buildMatchStartPayload(match, guest);
+      if (hostPayload) send(host.ws, hostPayload);
+      if (guestPayload) send(guest.ws, guestPayload);
       break;
     }
     case "leave_match": {
       if (!client.matchId) return;
-      endMatch(client.matchId, "cancelled", client.id);
+      endMatch(client.matchId, "cancelled", client.username);
       client.matchId = null;
       broadcastPresence();
       break;
@@ -538,11 +631,9 @@ wss.on("connection", (ws) => {
   });
 
   ws.on("close", () => {
-    if (client.matchId) {
+    if (!client.skipDisconnectCleanup && client.matchId && client.username) {
       const match = matches.get(client.matchId);
-      if (match && match.state === "playing") {
-        endMatch(client.matchId, "opponent_disconnected", client.id);
-      }
+      if (match) schedulePlayerDisconnect(match, client.username);
     }
     clients.delete(id);
     broadcastPresence();
